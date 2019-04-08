@@ -156,6 +156,8 @@ def varscore_snp_num_series(stat_df, group, window=5, step=3,
             varscore = np.var(alt_freq.loc[slidewindow_i]) + offset
         elif method == 'est':
             varscore = np.average(np.power(alt_freq.loc[slidewindow_i], 2))
+        elif method == 'snp_index':
+            varscore = np.average(alt_freq.loc[slidewindow_i])
         else:
             sys.exit('Wrong analysis method.')
         varscore_list.append([score_chrom, start, end, varscore])
@@ -165,7 +167,7 @@ def varscore_snp_num_series(stat_df, group, window=5, step=3,
 
 
 def varscore_snp_num(stat_df, freq_est,
-                     window=5, step=3,
+                     window=10, step=5,
                      method='var',
                      offset=0.00001):
     analysis_groups = stat_df.columns[3:]
@@ -205,15 +207,15 @@ def varscore_by_window(stat_df,
                                names=intersect_obj_cols)
     intersect_df.drop(['snp_Chrom', 'snp_start', 'snp_end',
                        'overlap'], axis=1, inplace=True)
+    varscore_size_df = intersect_df.groupby(
+        ['Chrom', 'Start', 'End']).size()
     if method == 'var':
-        varscore_size_df = intersect_df.groupby(
-            ['Chrom', 'Start', 'End']).size()
         mask = varscore_size_df > 1
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End']).agg(
                 lambda x: np.var(x) + offset)
         varscore_df = varscore_df[mask]
-    else:
+    elif method == 'est':
         for n, group_i in enumerate(groups):
             intersect_df.loc[:, group_i] = intersect_df.loc[
                 :, group_i] - est[n]
@@ -221,6 +223,13 @@ def varscore_by_window(stat_df,
             ['Chrom', 'Start', 'End']).agg(
                 lambda x: np.average(np.power(x, 2))
         )
+    elif method == 'snp_index':
+        mask = varscore_size_df >= 10
+        varscore_df = intersect_df.groupby(
+            ['Chrom', 'Start', 'End']).agg('mean')
+        varscore_df = varscore_df[mask]
+    else:
+        sys.exit('Wrong analysis method.')
     return varscore_df.reset_index()
 
 
@@ -365,25 +374,35 @@ def filter_alt_stat(alt_freq_stat_df, cols, freq):
 
 def cal_varscore(alt_freq_stat_df, freq_est,
                  outdir, force, window_file=None,
-                 by='snp_num', method='var'):
-    varscore_file = outdir / f'vcf.{by}.{method}.score.txt'
+                 by='snp_num', method='var',
+                 snp_number_window=10,
+                 snp_number_step=5,
+                 stat_label='all'):
+    varscore_file = outdir / f'vcf.{stat_label}.{by}.{method}.score.txt'
     if (not varscore_file.exists()) or force:
         alt_freq_stat_pos_df = alt_freq_stat_df.iloc[:, 0:3]
         analysis_groups = alt_freq_stat_df.columns[3:]
-        logger.info('calculating score by {by} using {method}...',
-                    by=by, method=method)
-        if by == 'snp_num':
+        logger.info('calculating score using {stat_label} snp by {by} using {method}...',
+                    by=by, method=method, stat_label=stat_label)
+        if by in 'snp_num':
             varscore_df = varscore_snp_num(alt_freq_stat_df,
                                            freq_est,
-                                           method=method)
+                                           method=method,
+                                           window=snp_number_window,
+                                           step=snp_number_step)
         elif by == 'genome_window':
             varscore_df = varscore_by_window(alt_freq_stat_df,
                                              window_file,
                                              outdir,
                                              est=freq_est,
                                              method=method)
-        varscore_df.loc[:, 'varscore'] = varscore_df.loc[
-            :, analysis_groups[:-1]].apply(log_varscore, axis=1)
+        if method in ['var', 'est']:
+            varscore_df.loc[:, 'varscore'] = varscore_df.loc[
+                :, analysis_groups[:-1]].apply(log_varscore, axis=1)
+        elif method == 'snp_index':
+            group0, group1 = analysis_groups[0:2]
+            varscore_df.loc[:, 'varscore'] = varscore_df.loc[:, group0] - \
+                varscore_df.loc[:, group1]
         logger.info('writing varscore by snp number data...')
         varscore_df.to_csv(varscore_file, sep='\t', index=False)
     else:
@@ -414,25 +433,31 @@ def varscore(vcf, outdir, mutant_bulk, mutant_bulk_freq,
         reads_stats_df, outdir, plot_min_depth, force)
     # filter data
     freq_order = (f2_freq, f1_freq, bg_freq)
+    alt_freq_stat_filter_df = alt_freq_stat_df.copy()
     for n, cols_i in enumerate([['mutant_bulk', 'wild_bulk'],
                                 ['mutant_parent', 'wild_parent'],
                                 ['background']]):
-        alt_freq_stat_df = filter_alt_stat(alt_freq_stat_df,
-                                           cols_i,
-                                           freq_order[n])
+        alt_freq_stat_filter_df = filter_alt_stat(alt_freq_stat_filter_df,
+                                                  cols_i,
+                                                  freq_order[n])
     filter_freq_stas = outdir / 'vcf.plot.filter.txt'
-    alt_freq_stat_df.to_csv(filter_freq_stas, sep='\t', index=False)
+    alt_freq_stat_filter_df.to_csv(filter_freq_stas, sep='\t', index=False)
     # varscore by snp number
     freq_est = [mutant_bulk_freq, wild_bulk_freq,
                 mutant_parent_freq, wild_parent_freq]
     by = ['snp_num', 'genome_window']
-    method = ['var', 'est']
+    method = ['var', 'est', 'snp_index']
+    freq_df_dict = {'all': alt_freq_stat_df,
+                    'filter': alt_freq_stat_filter_df}
     for by_i in by:
         for method_i in method:
-            varsore_df = cal_varscore(alt_freq_stat_df, freq_est,
-                                      outdir, force, by=by_i,
-                                      method=method_i,
-                                      window_file=genome_window)
+            for stat_label in freq_df_dict:
+                varsore_df = cal_varscore(freq_df_dict[stat_label],
+                                          freq_est,
+                                          outdir, force, by=by_i,
+                                          method=method_i,
+                                          window_file=genome_window,
+                                          stat_label=stat_label)
 
 
 if __name__ == '__main__':
