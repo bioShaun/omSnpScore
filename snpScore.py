@@ -1,6 +1,7 @@
 import fire
 import gzip
 import sys
+import delegator
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -11,6 +12,11 @@ from itertools import zip_longest
 from functools import reduce
 from pybedtools import BedTool
 from io import StringIO
+
+
+script_dir = Path(__file__).parent
+SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
+SNP_INDEX_PLOT = script_dir / 'snpIndex.R'
 
 
 def init_logger(outdir):
@@ -188,7 +194,7 @@ def varscore_by_window(stat_df,
                        est=None, method='var',
                        offset=0.00001):
     groups = stat_df.columns[3:-1]
-    alt_freq_stat_bed = outdir / 'vcf.plot.bed'
+    alt_freq_stat_bed = outdir / 'snp.plot.bed'
     alt_freq_stat_df = stat_df.copy()
     alt_freq_stat_df.loc[:, 'start'] = alt_freq_stat_df.Pos - 1
     bed_cols = ['Chrom', 'start', 'Pos']
@@ -242,12 +248,31 @@ def log_varscore(row, offset=0.00001):
     return -np.log10(reduce(lambda a, b:  a * b, row_vals))
 
 
+def score_plot(score_file, method, force):
+    out_prefix = score_file.with_suffix('.plot')
+    plot_name = score_file.stem
+    if method in ['var', 'est', 'density']:
+        out_plot = score_file.with_suffix('.plot.jpg')
+        cmd = f'Rscript {SNP_SCORE_PLOT} --input {score_file} --output {out_prefix}'
+    elif method == 'snp_index':
+        out_plot = score_file.with_suffix('')
+        cmd = f'Rscript {SNP_INDEX_PLOT} --snp_index_file {score_file} --plot_dir {out_plot} --name {plot_name}'
+    else:
+        sys.exit(f'Wrong snp score method [{method}]!')
+    if not out_plot.exists() or force:
+        logger.info('generating {} plot...', plot_name)
+        r = delegator.run(cmd)
+        return r.out
+    else:
+        logger.info('{} plot exists.', plot_name)
+
+
 def vcf2df(vcf, outdir, force):
-    out_table = outdir / 'vcf.table.txt'
+    out_table = outdir / 'snp.table.txt'
     if (not out_table.exists()) or force:
         vcf = Path(vcf)
         vcf_header = extract_vcf_header(vcf)
-        logger.info('reading data...')
+        logger.info('reading vcf data...')
         vcf_df = pd.read_csv(vcf,
                              compression='gzip', comment='#',
                              header=None, names=vcf_header,
@@ -259,7 +284,7 @@ def vcf2df(vcf, outdir, force):
         out_table_df.loc[:, 'AlleNum'] = out_table_df.Alter.map(
             count_allele_num)
         # snpeff_anno
-        logger.info('extracting snpEff annotationg...')
+        logger.info('extracting snpEff annotation...')
         snpeff_anno = list(vcf_df.INFO.map(extract_snpeff_anno))
         snpeff_anno_df = pd.DataFrame(snpeff_anno)
         snpeff_anno_df.columns = ['Feature', 'Gene', 'Alle']
@@ -274,18 +299,18 @@ def vcf2df(vcf, outdir, force):
         logger.info('writing snp table...')
         out_table_anno_num_df.to_csv(out_table, sep='\t', index=False)
     else:
-        logger.info('snp table exists...')
+        logger.info('snp table exists.')
         out_table_anno_num_df = pd.read_csv(out_table, sep='\t')
     return out_table_anno_num_df
 
 
 def group_allele(out_table_anno_num_df, sample_group,
                  outdir, force):
-    stats_table = outdir / 'vcf.stats.txt'
+    stats_table = outdir / 'snp.stats.txt'
     if (not stats_table.exists()) or force:
         out_table_anno_df = out_table_anno_num_df.iloc[:, 0:8]
         reads_number_df = out_table_anno_num_df.iloc[:, 8:]
-        logger.info('merge allele info by group...')
+        logger.info('merging allele info by group...')
         plot_header = ('mutant_bulk', 'wild_bulk',
                        'mutant_parent', 'wild_parent',
                        'background')
@@ -311,24 +336,24 @@ def group_allele(out_table_anno_num_df, sample_group,
                                     reads_direct_df, reads_depth_df], sort=False,
                                    axis=1)
         reads_stats_df.loc[:, 'TotalDepth'] = reads_depth_df.sum(1)
-        logger.info('write snp stats table...')
+        logger.info('writing snp stats table...')
         reads_stats_df.to_csv(stats_table, sep='\t', index=False,
                               float_format='%.5f')
     else:
-        logger.info('snp stats table exists...')
+        logger.info('snp stats table exists.')
         reads_stats_df = pd.read_csv(stats_table, sep='\t')
     return reads_stats_df
 
 
 def group_alt_freq(reads_stats_df, outdir, plot_min_depth, force):
-    alt_freq_stat_file = outdir / 'vcf.plot.txt'
+    alt_freq_stat_file = outdir / 'snp.freq.txt'
     if (not alt_freq_stat_file.exists()) or force:
         group_num = int((len(reads_stats_df.columns) - 9) / 4)
         group_allele_df = reads_stats_df.iloc[:, 8:8+group_num]
         reads_depth_df = reads_stats_df.iloc[:, -group_num-1:-1]
         analysis_groups = group_allele_df.columns
         # generate plot data
-        logger.info('generating plot data...')
+        logger.info('generating snp alt freq data...')
         alt_freq_stats = []
         out_col = ['SNP', 'Chrom', 'Pos']
         out_col.extend(analysis_groups)
@@ -349,8 +374,9 @@ def group_alt_freq(reads_stats_df, outdir, plot_min_depth, force):
         alt_freq_stat_df.to_csv(alt_freq_stat_file, sep='\t', index=False,
                                 float_format='%.5f')
     else:
-        logger.info('plot data exists...')
+        logger.info('snp alt freq data exists.')
         alt_freq_stat_df = pd.read_csv(alt_freq_stat_file, sep='\t')
+    score_plot(alt_freq_stat_file, 'density', force)
     return alt_freq_stat_df
 
 
@@ -372,17 +398,36 @@ def filter_alt_stat(alt_freq_stat_df, cols, freq):
     return alt_freq_stat_df
 
 
+def filter_snp(alt_freq_stat_df, freq_order, outdir, force):
+    filter_freq_stas = outdir / 'snp.freq.filter.txt'
+    if (not filter_freq_stas.exists()) or force:
+        logger.info('filtering snp ...')
+        alt_freq_stat_filter_df = alt_freq_stat_df.copy()
+        for n, cols_i in enumerate([['mutant_bulk', 'wild_bulk'],
+                                    ['mutant_parent', 'wild_parent'],
+                                    ['background']]):
+            alt_freq_stat_filter_df = filter_alt_stat(alt_freq_stat_filter_df,
+                                                      cols_i,
+                                                      freq_order[n])
+        alt_freq_stat_filter_df.to_csv(filter_freq_stas, sep='\t', index=False)
+    else:
+        logger.info('snp filtered.')
+        alt_freq_stat_filter_df = pd.read_csv(filter_freq_stas, sep='\t')
+    score_plot(filter_freq_stas, 'density', force)
+    return alt_freq_stat_filter_df
+
+
 def cal_varscore(alt_freq_stat_df, freq_est,
                  outdir, force, window_file=None,
                  by='snp_num', method='var',
                  snp_number_window=10,
                  snp_number_step=5,
                  stat_label='all'):
-    varscore_file = outdir / f'vcf.{stat_label}.{by}.{method}.score.txt'
+    varscore_file = outdir / f'snp.{stat_label}.{by}.{method}.score.txt'
     if (not varscore_file.exists()) or force:
         alt_freq_stat_pos_df = alt_freq_stat_df.iloc[:, 0:3]
         analysis_groups = alt_freq_stat_df.columns[3:]
-        logger.info('calculating score using {stat_label} snp by {by} using {method}...',
+        logger.info('calculating score based on {stat_label} snp by {by} using {method}...',
                     by=by, method=method, stat_label=stat_label)
         if by in 'snp_num':
             varscore_df = varscore_snp_num(alt_freq_stat_df,
@@ -406,7 +451,10 @@ def cal_varscore(alt_freq_stat_df, freq_est,
         logger.info('writing varscore by snp number data...')
         varscore_df.to_csv(varscore_file, sep='\t', index=False)
     else:
+        logger.info('snp score based on {stat_label} snp by {by} using {method} exist.',
+                    by=by, method=method, stat_label=stat_label)
         varscore_df = pd.read_csv(varscore_file, sep='\t')
+    score_plot(varscore_file, method, force)
     return varscore_df
 
 
@@ -433,15 +481,8 @@ def varscore(vcf, outdir, mutant_bulk, mutant_bulk_freq,
         reads_stats_df, outdir, plot_min_depth, force)
     # filter data
     freq_order = (f2_freq, f1_freq, bg_freq)
-    alt_freq_stat_filter_df = alt_freq_stat_df.copy()
-    for n, cols_i in enumerate([['mutant_bulk', 'wild_bulk'],
-                                ['mutant_parent', 'wild_parent'],
-                                ['background']]):
-        alt_freq_stat_filter_df = filter_alt_stat(alt_freq_stat_filter_df,
-                                                  cols_i,
-                                                  freq_order[n])
-    filter_freq_stas = outdir / 'vcf.plot.filter.txt'
-    alt_freq_stat_filter_df.to_csv(filter_freq_stas, sep='\t', index=False)
+    alt_freq_stat_filter_df = filter_snp(alt_freq_stat_df, freq_order,
+                                         outdir, force)
     # varscore by snp number
     freq_est = [mutant_bulk_freq, wild_bulk_freq,
                 mutant_parent_freq, wild_parent_freq]

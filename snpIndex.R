@@ -89,7 +89,7 @@ snp_plot_fun <- function(each_chr) {
   p <- grid.arrange(p1, p2, p3, nrow = 3,ncol = 1)
 
 
-  plot_name <- file.path(plot_dir, paste(each_chr, name, 'snp_index', sep='.'))
+  plot_name <- file.path(plot_dir, each_chr)
   ggsave(filename = paste(plot_name, 'png', sep = '.'),
     plot=p,
     width = 8,
