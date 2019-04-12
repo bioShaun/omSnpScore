@@ -9,11 +9,6 @@ suppressMessages(library(gridExtra))
 suppressMessages(library(omplotr))
 
 
-# setwd('C:\\work\\project\\reseq\\snp')
-# file_dir <- './'
-# name <- 'E_ZC_6vsE_ZS_6'
-# plot_dir <- './'
-
 options(stringsAsFactors = F)
 
 p <- arg_parser("Plot snp index")
@@ -21,19 +16,14 @@ p <- add_argument(
   p, '--snp_index_file',
   help = 'snp-index')
 p <- add_argument(
-  p, '--name',
-  help = 'plot name')
-p <- add_argument(
   p, '--plot_dir',
   help = 'directory store plot data.')
 argv <- parse_args(p)
 
-# snp_index_file <- 'vcf.all.genome_window.snp_index.score.txt'
+# snp_index_file <- 'snp.all.genome_window.snp_index.score.txt'
 # plot_dir <- 'snp_index'
-# name <- 'test'
 
 snp_index_file <- argv$snp_index_file
-name <- argv$name
 plot_dir <- argv$plot_dir
 
 if ( ! dir.exists(plot_dir)) {
@@ -42,8 +32,8 @@ if ( ! dir.exists(plot_dir)) {
 
 
 snp_index_df <- fread(snp_index_file)
-add_col <- colnames(snp_index_df)[4:5]
-m_snp_index_df <- melt(snp_index_df, id.vars = c('Chrom', 'Start', 'End'))
+add_col <- c('mutant_bulk', 'wild_bulk') 
+m_snp_index_df <- melt(snp_index_df, id.vars = c('Chrom', 'Start', 'End', 'Label'))
 m_snp_index_df$start_m <- m_snp_index_df$Start / 1000000
 
 
