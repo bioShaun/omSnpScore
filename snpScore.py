@@ -141,51 +141,38 @@ def slidewindow(obj, window, step):
         yield obj[i:i+window]
 
 
-def varscore_snp_num_series(stat_df, group, window=5, step=3,
-                            est=None, method='var',
-                            offset=0.00001):
-    alt_freq = stat_df.loc[:, group]
-    if method == 'est':
-        alt_freq = alt_freq - est
-    varscore_list = []
-    index_list = []
-    for slidewindow_i in slidewindow(alt_freq.index, window, step):
-        index_list.append(slidewindow_i[0])
-        chrom = stat_df.Chrom[slidewindow_i].unique()
-        if len(chrom) == 1:
-            score_chrom = chrom[0]
-        else:
-            continue
-        start = stat_df.Pos[slidewindow_i[0]] - 1
-        end = stat_df.Pos[slidewindow_i[-1]]
-        if method == 'var':
-            varscore = np.var(alt_freq.loc[slidewindow_i]) + offset
-        elif method == 'est':
-            varscore = np.average(np.power(alt_freq.loc[slidewindow_i], 2))
-        elif method == 'snp_index':
-            varscore = np.average(alt_freq.loc[slidewindow_i])
-        else:
-            sys.exit('Wrong analysis method.')
-        varscore_list.append([score_chrom, start, end, varscore])
-    varscore_df = pd.DataFrame(varscore_list,
-                               columns=['Chrom', 'Start', 'End', group])
-    return varscore_df
+def make_snp_number_windows(stat_df, window, step, outdir, force):
+    snp_num_window_file = outdir / f'snp_num.window.w{window}.s{step}.bed'
+    if (not snp_num_window_file.exists()) or force:
+        logger.info(
+            'making snp number slidewindow bed file windows {w} step {s}',
+            w=window, s=step)
+        snp_num_window_list = []
+        for slidewindow_i in slidewindow(stat_df.index, window, step):
+            chrom = stat_df.Chrom[slidewindow_i].unique()
+            if len(chrom) == 1:
+                score_chrom = chrom[0]
+            else:
+                continue
+            start = stat_df.Pos[slidewindow_i[0]] - 1
+            end = stat_df.Pos[slidewindow_i[-1]]
+            snp_num_window_list.append([score_chrom, start, end])
+        snp_num_window_df = pd.DataFrame(snp_num_window_list,
+                                         columns=['Chrom', 'Start', 'End'])
+        snp_num_window_df.to_csv(
+            snp_num_window_file, sep='\t', index=False, header=False)
+    return snp_num_window_file
 
 
-def varscore_snp_num(stat_df, freq_est,
-                     window=10, step=5,
-                     method='var',
-                     offset=0.00001):
-    analysis_groups = stat_df.columns[3:]
-    varsore_list = []
-    for n, group_i in enumerate(analysis_groups[:-1]):
-        varsore_list.append(varscore_snp_num_series(
-            stat_df, group_i,
-            method=method,
-            est=freq_est[n]
-        ))
-    varscore_df = reduce(pd.merge, varsore_list)
-    return varscore_df
+def make_genome_windows(chr_file, window, step, outdir, force):
+    window_file = outdir / f'genome.window.w{window}.s{step}.bed'
+    if (not window_file.exists()) or force:
+        logger.info(
+            'making genome slidewindow bed file windows {w} step {s}',
+            w=window, s=step)
+        cmd = f'bedtools makewindows -g {chr_file} -w {window} -s {step} > {window_file}'
+        delegator.run(cmd)
+    return window_file
 
 
 def varscore_by_window(stat_df,
@@ -418,11 +405,14 @@ def filter_snp(alt_freq_stat_df, freq_order, outdir, force):
 
 
 def cal_varscore(alt_freq_stat_df, freq_est,
-                 outdir, force, window_file=None,
+                 outdir, force,
                  by='snp_num', method='var',
-                 snp_number_window=10,
-                 snp_number_step=5,
-                 stat_label='all'):
+                 snp_number_window=5,
+                 snp_number_step=3,
+                 genome_window=2000000,
+                 genome_step=1000000,
+                 stat_label='all',
+                 chr_size=None):
     varscore_file = outdir / f'snp.{stat_label}.{by}.{method}.score.txt'
     if (not varscore_file.exists()) or force:
         alt_freq_stat_pos_df = alt_freq_stat_df.iloc[:, 0:3]
@@ -430,12 +420,17 @@ def cal_varscore(alt_freq_stat_df, freq_est,
         logger.info('calculating score based on {stat_label} snp by {by} using {method}...',
                     by=by, method=method, stat_label=stat_label)
         if by in 'snp_num':
-            varscore_df = varscore_snp_num(alt_freq_stat_df,
-                                           freq_est,
-                                           method=method,
-                                           window=snp_number_window,
-                                           step=snp_number_step)
+            snp_number_window_file = make_snp_number_windows(
+                alt_freq_stat_df, snp_number_window,
+                snp_number_step, outdir, force)
+            varscore_df = varscore_by_window(alt_freq_stat_df,
+                                             snp_number_window_file,
+                                             outdir,
+                                             est=freq_est,
+                                             method=method)
         elif by == 'genome_window':
+            window_file = make_genome_windows(chr_size, genome_window,
+                                              genome_step, outdir, force)
             varscore_df = varscore_by_window(alt_freq_stat_df,
                                              window_file,
                                              outdir,
@@ -459,7 +454,7 @@ def cal_varscore(alt_freq_stat_df, freq_est,
 
 
 def varscore(vcf, outdir, mutant_bulk, mutant_bulk_freq,
-             wild_bulk, wild_bulk_freq, genome_window,
+             wild_bulk, wild_bulk_freq, chr_size=None,
              mutant_parent=None, mutant_parent_freq=None,
              wild_parent=None, wild_parent_freq=None,
              background=None, plot_min_depth=5,
@@ -483,7 +478,8 @@ def varscore(vcf, outdir, mutant_bulk, mutant_bulk_freq,
     freq_order = (f2_freq, f1_freq, bg_freq)
     alt_freq_stat_filter_df = filter_snp(alt_freq_stat_df, freq_order,
                                          outdir, force)
-    # varscore by snp number
+
+    # varscore
     freq_est = [mutant_bulk_freq, wild_bulk_freq,
                 mutant_parent_freq, wild_parent_freq]
     by = ['snp_num', 'genome_window']
@@ -497,8 +493,8 @@ def varscore(vcf, outdir, mutant_bulk, mutant_bulk_freq,
                                           freq_est,
                                           outdir, force, by=by_i,
                                           method=method_i,
-                                          window_file=genome_window,
-                                          stat_label=stat_label)
+                                          stat_label=stat_label,
+                                          chr_size=chr_size)
 
 
 if __name__ == '__main__':
