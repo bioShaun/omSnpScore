@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+
+import click
+from snpScore import core
+
+
+@click.command()
+@click.option(
+    '-vcf',
+    '--vcf_table_files',
+    help='vcf hd5 files, seperated with ",".',
+    required=True,
+    type=click.STRING
+)
+@click.option(
+    '-g',
+    '--group_labels',
+    help='vcf file groups, seperated with ",".',
+    type=click.STRING,
+    required=True
+)
+@click.option(
+    '-o',
+    '--outdir',
+    help='results directory.',
+    required=True,
+    type=click.Path()
+)
+@click.option(
+    '--mutant_freq_low',
+    help='mutant alt allele frequency lower level.',
+    default=0.3,
+    type=click.FLOAT
+)
+@click.option(
+    '--wild_freq_low',
+    help='wild alt allele frequency lower level.',
+    default=0.3,
+    type=click.FLOAT
+)
+@click.option(
+    '--mutant_parent_freq_low',
+    help='mutant parent alt allele frequency lower level.',
+    default=None,
+    type=click.FLOAT
+)
+@click.option(
+    '--wild_parent_freq_low',
+    help='wild parent alt allele frequency lower level.',
+    default=None,
+    type=click.FLOAT
+)
+@click.option(
+    '--background_freq_low',
+    help='background alt allele frequency lower level.',
+    default=None,
+    type=click.FLOAT
+)
+@click.option(
+    '--mutant_freq_up',
+    help='mutant alt allele frequency upper level.',
+    default=0.7,
+    type=click.FLOAT
+)
+@click.option(
+    '--wild_freq_up',
+    help='wild alt allele frequency upper level.',
+    default=0.7,
+    type=click.FLOAT
+)
+@click.option(
+    '--mutant_parent_freq_up',
+    help='mutant parent alt allele frequency upper level.',
+    default=None,
+    type=click.FLOAT
+)
+@click.option(
+    '--wild_parent_freq_up',
+    help='wild parent alt allele frequency upper level.',
+    default=None,
+    type=click.FLOAT
+)
+@click.option(
+    '--background_freq_up',
+    help='background alt allele frequency upper level.',
+    default=None,
+    type=click.FLOAT
+)
+@click.option(
+    '--min_depth',
+    help='minimal read depth for a site to include in analysis.',
+    default=5,
+    type=click.INT
+)
+@click.option(
+    '--snp_number_window',
+    help='snp number slidewindow window size.',
+    default=10,
+    type=click.INT
+)
+@click.option(
+    '--snp_number_step',
+    help='snp number slidewindow step size.',
+    default=5,
+    type=click.INT
+)
+@click.option(
+    '--genome_window',
+    help='genome slidewindow window size.',
+    default=1000000,
+    type=click.INT
+)
+@click.option(
+    '--genome_step',
+    help='genome slidewindow step size.',
+    default=500000,
+    type=click.INT
+)
+@click.option(
+    '--methods',
+    help='snp score calculation methods.',
+    default='var,snp_index',
+    type=click.STRING
+)
+def main(vcf_table_files,
+         group_labels,
+         outdir,
+         mutant_freq_low,
+         wild_freq_low,
+         mutant_parent_freq_low,
+         wild_parent_freq_low,
+         background_freq_low,
+         mutant_freq_up,
+         wild_freq_up,
+         mutant_parent_freq_up,
+         wild_parent_freq_up,
+         background_freq_up,
+         min_depth,
+         snp_number_window,
+         snp_number_step,
+         genome_window,
+         genome_step,
+         methods):
+    snp_score_obj = core.SNPscore(vcf_table_files,
+                                  group_labels,
+                                  outdir,
+                                  mutant_freq_low,
+                                  wild_freq_low,
+                                  mutant_parent_freq_low,
+                                  wild_parent_freq_low,
+                                  background_freq_low,
+                                  mutant_freq_up,
+                                  wild_freq_up,
+                                  mutant_parent_freq_up,
+                                  wild_parent_freq_up,
+                                  background_freq_up,
+                                  min_depth,
+                                  snp_number_window,
+                                  snp_number_step,
+                                  genome_window,
+                                  genome_step,
+                                  methods)
+    snp_score_obj.run
+
+
+if __name__ == '__main__':
+    main()

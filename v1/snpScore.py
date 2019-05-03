@@ -3,6 +3,8 @@ import gzip
 import sys
 import delegator
 import gtfparse
+import glob
+import os
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -18,6 +20,7 @@ from io import StringIO
 script_dir = Path(__file__).parent
 SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
 SNP_INDEX_PLOT = script_dir / 'snpIndex.R'
+OFFSET = 1e-05
 
 
 def init_logger(outdir):
@@ -139,15 +142,17 @@ def merge_allele_inf(row):
 
 def slidewindow(obj, window, step):
     for i in range(0, len(obj), step):
-        yield obj[i:i+window]
+        yield obj[i:i + window]
 
 
-def make_snp_number_windows(stat_df, stat_label, window, step, outdir, force):
-    snp_num_window_file = outdir / f'snp_num.{stat_label}.window.w{window}.s{step}.bed'
-    if (not snp_num_window_file.exists()) or force:
+def make_snp_number_windows(stat_df, stat_label, window, step, outdir):
+    snp_num_window_file = outdir / \
+        f'snp_num.{stat_label}.window.w{window}.s{step}.bed'
+    if (not snp_num_window_file.exists()):
         logger.info(
-            'making {l} snp number slidewindow bed file windows {w} step {s}...',
-            w=window, s=step, l=stat_label)
+            ('making {label} snp number slidewindow bed file'
+             ' windows {w} step {s}...'),
+            w=window, s=step, label=stat_label)
         snp_num_window_list = []
         for slidewindow_i in slidewindow(stat_df.index, window, step):
             chrom = stat_df.Chrom[slidewindow_i].unique()
@@ -160,19 +165,22 @@ def make_snp_number_windows(stat_df, stat_label, window, step, outdir, force):
             snp_num_window_list.append([score_chrom, start, end])
         snp_num_window_df = pd.DataFrame(snp_num_window_list,
                                          columns=['Chrom', 'Start', 'End'])
-        snp_num_window_df.loc[:, 'label'] = snp_num_window_df.index.map(lambda x: f'snp_group{x+1}')
+        snp_num_window_df.loc[:, 'label'] = snp_num_window_df.index.map(
+            lambda x: f'snp_group{x+1}')
         snp_num_window_df.to_csv(
             snp_num_window_file, sep='\t', index=False, header=False)
     return snp_num_window_file
 
 
-def make_genome_windows(chr_file, window, step, outdir, force):
+def make_genome_windows(chr_file, window, step, outdir):
     window_file = outdir / f'genome.window.w{window}.s{step}.bed'
-    if (not window_file.exists()) or force:
+    if (not window_file.exists()):
         logger.info(
             'making genome slidewindow bed file windows {w} step {s}...',
             w=window, s=step)
-        cmd = f'bedtools makewindows -g {chr_file} -w {window} -s {step} > {window_file}'
+        cmd = (f'bedtools makewindows '
+               '-g {chr_file} -w {window} -s {step}'
+               ' > {window_file}')
         delegator.run(cmd)
         window_df = pd.read_csv(window_file, sep='\t', header=None,
                                 names=['Chrom', 'Start', 'End'])
@@ -184,9 +192,9 @@ def make_genome_windows(chr_file, window, step, outdir, force):
     return window_file
 
 
-def make_gene_window(gtf, outdir, force, by='gene'):
+def make_gene_window(gtf, outdir, by='gene'):
     window_file = outdir / f'{by}.window.bed'
-    if (not window_file.exists()) or force:
+    if (not window_file.exists()):
         logger.info(
             'making {by} bed file...',
             by=by)
@@ -214,16 +222,26 @@ def make_gene_window(gtf, outdir, force, by='gene'):
     return window_file
 
 
+def clean_window(outdir, pattern):
+    # clean windows file
+    windows_files = glob.glob(f'{outdir}/*{pattern}*')
+    if windows_files:
+        for windows_file_i in windows_files:
+            if os.path.isfile(windows_file_i):
+                os.system(f'rm {windows_file_i}')
+
+
 def varscore_by_window(stat_df,
                        window_file,
                        outdir,
                        stat_label,
                        by,
-                       est=None, method='var',
-                       offset=0.00001):
+                       est=None, method='var'):
     logger.info('calculating score based on {stat_label} snp by {by} using {method}...',
                 by=by, method=method, stat_label=stat_label)
-    groups = stat_df.columns[3:-1]
+    groups = stat_df.columns[3:]
+    if 'background' in groups:
+        groups = groups.drop('background')
     alt_freq_stat_bed = outdir / f'snp.{stat_label}.plot.bed'
     if not alt_freq_stat_bed.exists():
         alt_freq_stat_df = stat_df.copy()
@@ -246,37 +264,32 @@ def varscore_by_window(stat_df,
                        'overlap'], axis=1, inplace=True)
     varscore_size_df = intersect_df.groupby(
         ['Chrom', 'Start', 'End', 'Label']).size()
+    mask = varscore_size_df >= 5
     if method == 'var':
-        mask = varscore_size_df > 1
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End', 'Label']).agg(
-                lambda x: np.var(x) + offset)
-        varscore_df = varscore_df[mask]
+                lambda x: np.var(x))
     elif method == 'est':
         for n, group_i in enumerate(groups):
             intersect_df.loc[:, group_i] = intersect_df.loc[
                 :, group_i] - est[n]
+
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End', 'Label']).agg(
                 lambda x: np.average(np.power(x, 2))
         )
     elif method == 'snp_index':
-        mask = varscore_size_df >= 10
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End', 'Label']).agg('mean')
-        varscore_df = varscore_df[mask]
     else:
         sys.exit('Wrong analysis method.')
+    varscore_df = varscore_df[mask]
+    varscore_df = varscore_df.applymap(lambda x: x if x >= OFFSET else OFFSET)
     return varscore_df.reset_index()
 
 
-def log_varscore(row, offset=0.00001):
-    row_vals = []
-    for row_i in row:
-        if row_i == 0:
-            row_i = row_i + offset
-        row_vals.append(row_i)
-    return -np.log10(reduce(lambda a, b:  a * b, row_vals))
+def log_varscore(row):
+    return np.power(-np.log10(reduce(lambda a, b:  a * b, row)), 10)
 
 
 def score_plot(score_file, method, force):
@@ -298,9 +311,15 @@ def score_plot(score_file, method, force):
         logger.info('{} plot exists.', plot_name)
 
 
-def vcf2df(vcf, outdir, force):
+def vcf2df(vcf, snp_table, outdir, force):
     out_table = outdir / 'snp.table.txt'
+    if snp_table is not None:
+        snp_table = Path(snp_table).resolve()
+        ln_cmd = f'ln -sf {snp_table} {out_table}'
+        delegator.run(ln_cmd)
     if (not out_table.exists()) or force:
+        if vcf is None:
+            sys.exit('vcf or snp_table file is needed!')
         vcf = Path(vcf)
         vcf_header = extract_vcf_header(vcf)
         logger.info('reading vcf data...')
@@ -332,6 +351,12 @@ def vcf2df(vcf, outdir, force):
     else:
         logger.info('snp table exists.')
         out_table_anno_num_df = pd.read_csv(out_table, sep='\t')
+        if 'AlleNum' not in out_table_anno_num_df.columns:
+            old_cols = out_table_anno_num_df.columns
+            out_table_anno_num_df.loc[:, 'AlleNum'] = out_table_anno_num_df.Alter.map(
+                count_allele_num)
+            new_cols = old_cols.insert(4, 'AlleNum')
+            out_table_anno_num_df = out_table_anno_num_df.loc[:, new_cols]
     return out_table_anno_num_df
 
 
@@ -349,6 +374,7 @@ def group_allele(out_table_anno_num_df, sample_group,
         group_allele_stats = []
         for n, sample_i in enumerate(sample_group):
             if sample_i is not None:
+                sample_i = sample_i.split(',')
                 group_df = pd.DataFrame(reads_number_df.loc[:, sample_i])
                 group_allele_stats.append(
                     group_df.apply(merge_allele_inf, axis=1))
@@ -380,8 +406,8 @@ def group_alt_freq(reads_stats_df, outdir, plot_min_depth, force):
     alt_freq_stat_file = outdir / 'snp.freq.txt'
     if (not alt_freq_stat_file.exists()) or force:
         group_num = int((len(reads_stats_df.columns) - 9) / 4)
-        group_allele_df = reads_stats_df.iloc[:, 8:8+group_num]
-        reads_depth_df = reads_stats_df.iloc[:, -group_num-1:-1]
+        group_allele_df = reads_stats_df.iloc[:, 8:8 + group_num]
+        reads_depth_df = reads_stats_df.iloc[:, -group_num - 1:-1]
         analysis_groups = group_allele_df.columns
         # generate plot data
         logger.info('generating snp alt freq data...')
@@ -404,6 +430,8 @@ def group_alt_freq(reads_stats_df, outdir, plot_min_depth, force):
         alt_freq_stat_df = alt_freq_stat_df.loc[:, out_col]
         alt_freq_stat_df.to_csv(alt_freq_stat_file, sep='\t', index=False,
                                 float_format='%.5f')
+        clean_window(outdir, 'snp_num.all.window')
+        clean_window(outdir, 'plot.bed')
     else:
         logger.info('snp alt freq data exists.')
         alt_freq_stat_df = pd.read_csv(alt_freq_stat_file, sep='\t')
@@ -441,6 +469,8 @@ def filter_snp(alt_freq_stat_df, freq_order, outdir, force):
                                                       cols_i,
                                                       freq_order[n])
         alt_freq_stat_filter_df.to_csv(filter_freq_stas, sep='\t', index=False)
+        clean_window(outdir, 'snp_num.filter.window')
+        clean_window(outdir, 'plot.bed')
     else:
         logger.info('snp filtered.')
         alt_freq_stat_filter_df = pd.read_csv(filter_freq_stas, sep='\t')
@@ -449,10 +479,9 @@ def filter_snp(alt_freq_stat_df, freq_order, outdir, force):
 
 
 def cal_varscore(alt_freq_stat_df, freq_est,
-                 outdir, force,
+                 outdir, snp_number_window,
+                 snp_number_step, force,
                  by='snp_num', method='var',
-                 snp_number_window=10,
-                 snp_number_step=5,
                  genome_window=2000000,
                  genome_step=1000000,
                  stat_label='all',
@@ -462,10 +491,13 @@ def cal_varscore(alt_freq_stat_df, freq_est,
     if (not varscore_file.exists()) or force:
         alt_freq_stat_pos_df = alt_freq_stat_df.iloc[:, 0:3]
         analysis_groups = alt_freq_stat_df.columns[3:]
+        if 'background' in analysis_groups:
+            analysis_groups = analysis_groups.drop('background')
+
         if by in 'snp_num':
             snp_number_window_file = make_snp_number_windows(
                 alt_freq_stat_df, stat_label, snp_number_window,
-                snp_number_step, outdir, force)
+                snp_number_step, outdir)
             varscore_df = varscore_by_window(alt_freq_stat_df,
                                              snp_number_window_file,
                                              outdir,
@@ -477,7 +509,7 @@ def cal_varscore(alt_freq_stat_df, freq_est,
             if chr_size is None:
                 return 0
             window_file = make_genome_windows(chr_size, genome_window,
-                                              genome_step, outdir, force)
+                                              genome_step, outdir)
             varscore_df = varscore_by_window(alt_freq_stat_df,
                                              window_file,
                                              outdir,
@@ -488,7 +520,7 @@ def cal_varscore(alt_freq_stat_df, freq_est,
         elif by == 'gene':
             if gtf is None:
                 return 0
-            window_file = make_gene_window(gtf, outdir, force)
+            window_file = make_gene_window(gtf, outdir)
             varscore_df = varscore_by_window(alt_freq_stat_df,
                                              window_file,
                                              outdir,
@@ -498,63 +530,89 @@ def cal_varscore(alt_freq_stat_df, freq_est,
                                              method=method)
         if method in ['var', 'est']:
             varscore_df.loc[:, 'varscore'] = varscore_df.loc[
-                :, analysis_groups[:-1]].apply(log_varscore, axis=1)
+                :, analysis_groups].apply(log_varscore, axis=1)
         elif method == 'snp_index':
             group0, group1 = analysis_groups[0:2]
             varscore_df.loc[:, 'varscore'] = varscore_df.loc[:, group0] - \
                 varscore_df.loc[:, group1]
-        logger.info('writing varscore by snp number data...')
+        logger.info(
+            'writing snp score on {stat_label} snp by {by} using {method}...')
         varscore_df.to_csv(varscore_file, sep='\t', index=False)
     else:
-        logger.info('snp score based on {stat_label} snp by {by} using {method} exist.',
-                    by=by, method=method, stat_label=stat_label)
+        logger.info(
+            'snp score based on {stat_label} snp by {by} using {method} exist.',
+            by=by, method=method, stat_label=stat_label)
         varscore_df = pd.read_csv(varscore_file, sep='\t')
     score_plot(varscore_file, method, force)
     return varscore_df
 
 
-def varscore(vcf, outdir, mutant_bulk, mutant_bulk_freq,
-             wild_bulk, wild_bulk_freq, chr_size=None,
+def varscore(outdir, mutant_bulk, mutant_bulk_freq,
+             wild_bulk, wild_bulk_freq,
+             vcf=None, snp_table=None,
+             chr_size=None,
              mutant_parent=None, mutant_parent_freq=None,
              wild_parent=None, wild_parent_freq=None,
              background=None, plot_min_depth=5,
              force=False, f2_freq=0.3, f1_freq=0.1,
-             bg_freq=0.2, gtf=None):
+             bg_freq=0.2, gtf=None,
+             genome_window=1000000,
+             genome_step=500000,
+             snp_number_window=10,
+             snp_number_step=5,
+             load_file=False,
+             group_stat=False,
+             alt_freq=False,
+             snp_filter=False,
+             snp_score=False):
     # init log
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     init_logger(outdir)
     # read vcf file
-    out_table_anno_num_df = vcf2df(vcf, outdir, force)
+    out_table_anno_num_df = vcf2df(vcf, snp_table, outdir, load_file)
     # reads stats by group
-    reads_stats_df = group_allele(out_table_anno_num_df,
-                                  [mutant_bulk, wild_bulk, mutant_parent,
-                                   wild_parent, background],
-                                  outdir, force)
+
+    group_stat = load_file or group_stat
+    reads_stats_df = group_allele(
+        out_table_anno_num_df,
+        [mutant_bulk, wild_bulk, mutant_parent,
+         wild_parent, background],
+        outdir, group_stat)
     # generate plot data
+    alt_freq = group_stat or alt_freq
     alt_freq_stat_df = group_alt_freq(
-        reads_stats_df, outdir, plot_min_depth, force)
+        reads_stats_df, outdir, plot_min_depth, alt_freq)
     # filter data
     freq_order = (f2_freq, f1_freq, bg_freq)
-    alt_freq_stat_filter_df = filter_snp(alt_freq_stat_df, freq_order,
-                                         outdir, force)
+    snp_filter = alt_freq or snp_filter
+    alt_freq_stat_filter_df = filter_snp(
+        alt_freq_stat_df, freq_order,
+        outdir, snp_filter)
 
     # varscore
+    snp_score = snp_filter or snp_score
     freq_est = [mutant_bulk_freq, wild_bulk_freq,
                 mutant_parent_freq, wild_parent_freq]
     by = ['snp_num', 'genome_window', 'gene']
     method = ['var', 'est', 'snp_index']
-    freq_df_dict = {'all': alt_freq_stat_df,
-                    'filter': alt_freq_stat_filter_df}
+    freq_df_dict = {
+        'filter': alt_freq_stat_filter_df}
     for by_i in by:
         for method_i in method:
             for stat_label in freq_df_dict:
-                varsore_df = cal_varscore(freq_df_dict[stat_label],
-                                          freq_est,
-                                          outdir, force, by=by_i,
-                                          method=method_i,
-                                          stat_label=stat_label,
-                                          chr_size=chr_size, gtf=gtf)
+                varsore_df = cal_varscore(
+                    freq_df_dict[stat_label],
+                    freq_est,
+                    outdir, snp_number_window,
+                    snp_number_step,
+                    snp_score, by=by_i,
+                    method=method_i,
+                    stat_label=stat_label,
+                    chr_size=chr_size, gtf=gtf,
+                    genome_window=genome_window,
+                    genome_step=genome_step,
+                )
 
 
 if __name__ == '__main__':
