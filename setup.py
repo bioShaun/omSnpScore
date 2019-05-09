@@ -30,6 +30,7 @@ setup(
         'delegator.py',
         'pybedtools',
         'numpy',
+        'tables',
     ],
 )
 
