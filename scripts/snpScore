@@ -37,6 +37,7 @@ def main(parameters,
     outdir = Path(outdir)
     outdir_suffix = snpStats.outdir_suffix_from_params(
         parameters_obj)
+    outdir = outdir.resolve()
     full_outdir = outdir / outdir_suffix
     snp_score_obj = core.SNPscore(vcf_table_files,
                                   group_labels,
@@ -58,6 +59,7 @@ def main(parameters,
                                   parameters_obj.get('genome_step'),
                                   parameters_obj.get('methods'))
     snp_score_obj.run
+    print(full_outdir)
 
 
 if __name__ == '__main__':
