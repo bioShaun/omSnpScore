@@ -23,6 +23,12 @@ async def launch_cmd(cmd):
         return (await p.communicate())[0].splitlines()
 
 
+def default_value(value, default_value):
+    if not value:
+        return default_value
+    return value
+
+
 class SNPscore:
 
     def __init__(self,
@@ -53,12 +59,23 @@ class SNPscore:
         self.snp_stats_df = None
         self.snp_group_stats_df = None
         self.snp_alt_freq_df = None
-        self.min_depth = min_depth
-        self.snp_number_window = snp_number_window
-        self.snp_number_step = snp_number_step
-        self.genome_window = genome_window
-        self.genome_step = genome_step
+        self.min_depth = default_value(min_depth, 5)
+        self.snp_number_window = default_value(snp_number_window, 10)
+        self.snp_number_step = default_value(snp_number_step, 5)
+        self.genome_window = default_value(genome_window, 1000000)
+        self.genome_step = default_value(genome_step, 500000)
+        methods = default_value(methods, 'var,snp_index')
         self.methods_list = methods.split(',')
+        mutant_freq_low = default_value(mutant_freq_low, 0.3)
+        mutant_freq_up = default_value(mutant_freq_up, 0.7)
+        wild_freq_low = default_value(wild_freq_low, 0.3)
+        wild_freq_up = default_value(wild_freq_up, 0.7)
+        mutant_parent_freq_low = default_value(mutant_parent_freq_low, None)
+        mutant_parent_freq_up = default_value(mutant_parent_freq_up, None)
+        wild_parent_freq_low = default_value(wild_parent_freq_low, None)
+        wild_parent_freq_up = default_value(wild_parent_freq_up, None)
+        background_freq_low = default_value(background_freq_low, None)
+        background_freq_up = default_value(background_freq_up, None)
         self.plot_cmds = []
         self.freq_dict = OrderedDict({
             'mutant': [mutant_freq_low, mutant_freq_up],

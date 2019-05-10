@@ -22,7 +22,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     scripts=['scripts/snpScore',
-             'scripts/table2hd5'],
+             'scripts/table2hd5',
+             'scripts/snpScore-cli'],
     install_requires=[
         'click',
         'pandas',

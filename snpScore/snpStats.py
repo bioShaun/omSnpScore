@@ -10,6 +10,7 @@ from pathlib import PurePath, Path
 script_dir = Path(__file__).parent
 SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
 OFFSET = 1e-05
+GROUPS = ('mutant', 'wild', 'mutant_parent', 'wild_parent', 'background')
 
 
 def load_hd5(hd5_file, index_cols=None):
@@ -18,6 +19,39 @@ def load_hd5(hd5_file, index_cols=None):
     if index_cols is not None:
         table_df = table_df.set_index(index_cols)
     return table_df
+
+
+def groups_from_params(params):
+    groups_list = []
+    for group_i in GROUPS:
+        if params.get(group_i):
+            groups_list.extend([group_i] * len(params[group_i]))
+    return ','.join(groups_list)
+
+
+def vcfs_from_params(params, data_dir):
+    data_list = []
+    for group_i in GROUPS:
+        if params.get(group_i) is None:
+            continue
+        for each_sample in params[group_i]:
+            sample_file = f'{data_dir}/{each_sample}.h5'
+            data_list.append(sample_file)
+    return ','.join(data_list)
+
+
+def outdir_suffix_from_params(params):
+    outdir_suffix_suffix = []
+    for group_i in GROUPS:
+        group_i_list = []
+        if params.get(group_i) is None:
+            continue
+        sample_list = sorted(params[group_i])
+        for sample_i in sample_list:
+            sample_i_id = sample_i.split('.')[0]
+            group_i_list.append(sample_i_id.replace('0', ''))
+        outdir_suffix_suffix.append('_'.join(group_i_list))
+    return '/'.join(outdir_suffix_suffix)
 
 
 def filter_alt_stat(alt_freq_stat_df, cols, freq):
