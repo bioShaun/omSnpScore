@@ -1,4 +1,5 @@
 import sys
+import os
 import delegator
 import numpy as np
 import pandas as pd
@@ -11,6 +12,13 @@ script_dir = Path(__file__).parent
 SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
 OFFSET = 1e-05
 GROUPS = ('mutant', 'wild', 'mutant_parent', 'wild_parent', 'background')
+
+
+def is_valid_file(file_path):
+    if os.path.exists(file_path):
+        if os.stat(file_path).st_size > 0:
+            return True
+    return False
 
 
 def load_hd5(hd5_file, index_cols=None):
@@ -95,7 +103,7 @@ def slidewindow(obj, window, step):
 def make_snp_number_windows(stat_df, group_label, window, step, outdir):
     snp_num_window_file = outdir / \
         f'{group_label}.snp_num.window.w{window}.s{step}.bed'
-    if not snp_num_window_file.exists():
+    if is_valid_file(snp_num_window_file):
         snp_num_window_list = []
         for slidewindow_i in slidewindow(stat_df.index, window, step):
             chrom = stat_df.Chr[slidewindow_i].unique()
@@ -115,7 +123,7 @@ def make_snp_number_windows(stat_df, group_label, window, step, outdir):
 
 def make_genome_windows(chr_size, window, step, outdir):
     window_file = outdir / f'genome.window.w{window}.s{step}.bed'
-    if (not window_file.exists()):
+    if not is_valid_file(window_file):
         cmd = ('bedtools makewindows '
                '-g {chr_size} -w {window} -s {step}'
                ' > {window_file}'.format(**locals()))
@@ -136,7 +144,7 @@ def snp_freq_by_window(stat_df,
     if 'background' in groups:
         groups = groups.drop('background')
     alt_freq_stat_bed = outdir / f'{group_label}.snp.plot.bed'
-    if not alt_freq_stat_bed.exists():
+    if not is_valid_file(alt_freq_stat_bed):
         alt_freq_stat_df = stat_df.copy()
         alt_freq_stat_df.loc[:, 'start'] = alt_freq_stat_df.Pos - 1
         bed_cols = ['Chr', 'start', 'Pos']

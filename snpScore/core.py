@@ -235,7 +235,7 @@ class SNPscore:
         self.init_logger()
         self.snp_alt_filter_file = self.outdir / \
             f'{self.group_label}.snp.freq.csv'
-        if not self.snp_alt_filter_file.exists():
+        if not snpStats.is_valid_file(self.snp_alt_filter_file):
             self.load_stats()
             self.group_stats()
             self.alt_freq()
