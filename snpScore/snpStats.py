@@ -103,7 +103,7 @@ def slidewindow(obj, window, step):
 def make_snp_number_windows(stat_df, group_label, window, step, outdir):
     snp_num_window_file = outdir / \
         f'{group_label}.snp_num.window.w{window}.s{step}.bed'
-    if is_valid_file(snp_num_window_file):
+    if not is_valid_file(snp_num_window_file):
         snp_num_window_list = []
         for slidewindow_i in slidewindow(stat_df.index, window, step):
             chrom = stat_df.Chr[slidewindow_i].unique()
