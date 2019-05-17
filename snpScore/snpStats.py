@@ -170,7 +170,7 @@ def log_varscore(row):
     return np.power(-np.log10(reduce(lambda a, b:  a * b, row)), 10)
 
 
-def cal_score(intersect_df, method='var', min_snp_num=5):
+def cal_score(intersect_df, method='var', min_snp_num=10):
     varscore_size_df = intersect_df.groupby(
         ['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
