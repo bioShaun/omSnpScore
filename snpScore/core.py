@@ -156,6 +156,9 @@ class SNPscore:
         logger.info('Calculating alt allele freq...')
         self.grp_alt_freq_df = self.passed_grp_alt_df / self.passed_grp_dep_df
         self.grp_alt_freq_df = self.grp_alt_freq_df.loc[:, self.group_order]
+        self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
+        out_grp_alt_freq_df = self.grp_alt_freq_df.reset_index()
+        out_grp_alt_freq_df.to_csv(self.grp_alt_freq_file, index=False)
 
     def snp_filter(self):
         logger.info('Filtering snp by freq...')
@@ -214,10 +217,6 @@ class SNPscore:
     def plot(self):
         logger.info('ploting ...')
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
-        if not self.grp_alt_freq_file.exists():
-            out_grp_alt_freq_df = self.grp_alt_freq_df.reset_index()
-            out_grp_alt_freq_df.to_csv(self.grp_alt_freq_file,
-                                       index=False)
         self.plot_cmds.append(snpStats.score_plot(
             self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(snpStats.score_plot(
