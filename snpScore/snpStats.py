@@ -201,7 +201,6 @@ def cal_score(intersect_df, method='var', min_snp_num=10):
     varscore_size_df = intersect_df.groupby(
         ['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
-    intersect_df = intersect_df.loc[:, ]
     if method == 'var':
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End']).agg(
