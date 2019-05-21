@@ -27,64 +27,52 @@ from snpScore import core
     type=click.Path()
 )
 @click.option(
-    '--mutant_freq_low',
-    help='mutant alt allele frequency lower level.',
-    default=0.3,
-    type=click.FLOAT
-)
-@click.option(
-    '--wild_freq_low',
-    help='wild alt allele frequency lower level.',
-    default=0.3,
-    type=click.FLOAT
-)
-@click.option(
-    '--mutant_parent_freq_low',
-    help='mutant parent alt allele frequency lower level.',
+    '--mutant_alt_exp',
+    help='mutant alt frequency expectation.',
     default=None,
     type=click.FLOAT
 )
 @click.option(
-    '--wild_parent_freq_low',
-    help='wild parent alt allele frequency lower level.',
+    '--wild_alt_exp',
+    help='wild alt frequency expectation.',
     default=None,
     type=click.FLOAT
 )
 @click.option(
-    '--background_freq_low',
-    help='background alt allele frequency lower level.',
+    '--mutant_parent_alt_exp',
+    help='mutant parent alt frequency expectation.',
     default=None,
     type=click.FLOAT
 )
 @click.option(
-    '--mutant_freq_up',
-    help='mutant alt allele frequency upper level.',
-    default=0.7,
-    type=click.FLOAT
-)
-@click.option(
-    '--wild_freq_up',
-    help='wild alt allele frequency upper level.',
-    default=0.7,
-    type=click.FLOAT
-)
-@click.option(
-    '--mutant_parent_freq_up',
-    help='mutant parent alt allele frequency upper level.',
+    '--wild_parent_alt_exp',
+    help='wild parent alt frequency expectation.',
     default=None,
     type=click.FLOAT
 )
 @click.option(
-    '--wild_parent_freq_up',
-    help='wild parent alt allele frequency upper level.',
+    '--background_alt_exp',
+    help='background alt frequency expectation.',
     default=None,
     type=click.FLOAT
 )
 @click.option(
-    '--background_freq_up',
-    help='background alt allele frequency upper level.',
-    default=None,
-    type=click.FLOAT
+    '--mutant_dominant',
+    help='mutant allele is dominant.',
+    default='no',
+    type=click.STRING
+)
+@click.option(
+    '--wild_dominant',
+    help='wild alt is dominant.',
+    default='no',
+    type=click.STRING
+)
+@click.option(
+    '--background_dominant',
+    help='background is dominant.',
+    default='no',
+    type=click.STRING
 )
 @click.option(
     '--min_depth',
@@ -95,7 +83,7 @@ from snpScore import core
 @click.option(
     '--snp_number_window',
     help='snp number slidewindow window size.',
-    default=10,
+    default=20,
     type=click.INT
 )
 @click.option(
@@ -125,16 +113,14 @@ from snpScore import core
 def main(vcf_table_files,
          group_labels,
          outdir,
-         mutant_freq_low,
-         wild_freq_low,
-         mutant_parent_freq_low,
-         wild_parent_freq_low,
-         background_freq_low,
-         mutant_freq_up,
-         wild_freq_up,
-         mutant_parent_freq_up,
-         wild_parent_freq_up,
-         background_freq_up,
+         mutant_alt_exp,
+         wild_alt_exp,
+         mutant_parent_alt_exp,
+         wild_parent_alt_exp,
+         background_alt_exp,
+         mutant_dominant,
+         wild_dominant,
+         background_dominant,
          min_depth,
          snp_number_window,
          snp_number_step,
@@ -144,16 +130,14 @@ def main(vcf_table_files,
     snp_score_obj = core.SNPscore(vcf_table_files,
                                   group_labels,
                                   outdir,
-                                  mutant_freq_low,
-                                  wild_freq_low,
-                                  mutant_parent_freq_low,
-                                  wild_parent_freq_low,
-                                  background_freq_low,
-                                  mutant_freq_up,
-                                  wild_freq_up,
-                                  mutant_parent_freq_up,
-                                  wild_parent_freq_up,
-                                  background_freq_up,
+                                  mutant_alt_exp,
+                                  wild_alt_exp,
+                                  mutant_parent_alt_exp,
+                                  wild_parent_alt_exp,
+                                  background_alt_exp,
+                                  mutant_dominant,
+                                  wild_dominant,
+                                  background_dominant,
                                   min_depth,
                                   snp_number_window,
                                   snp_number_step,

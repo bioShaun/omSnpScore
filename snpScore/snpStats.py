@@ -3,6 +3,7 @@ import os
 import delegator
 import numpy as np
 import pandas as pd
+from enum import Enum, IntEnum
 from io import StringIO
 from functools import reduce
 from pybedtools import BedTool
@@ -12,6 +13,20 @@ script_dir = Path(__file__).parent
 SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
 OFFSET = 1e-05
 GROUPS = ('mutant', 'wild', 'mutant_parent', 'wild_parent', 'background')
+
+
+class SnpGroup(Enum):
+    mut = 'mutant'
+    wild = 'wild'
+    mut_pa = 'mutant_parent'
+    wild_pa = 'wild_parent'
+    bg = 'background'
+
+
+class SnpRep(IntEnum):
+    alt = 0
+    ref = 1
+    unkown = 2
 
 
 def is_valid_file(file_path):
@@ -62,36 +77,50 @@ def outdir_suffix_from_params(params):
     return '/'.join(outdir_suffix_suffix)
 
 
-def filter_alt_stat(alt_freq_stat_df, cols, freq):
-    if len(cols) == 2:
-        if len(alt_freq_stat_df.columns.intersection(pd.Index(cols))) == 2:
-            group_i, group_j = cols
-            mask1 = alt_freq_stat_df.loc[:, group_i] <= freq[group_i][0]
-            mask2 = alt_freq_stat_df.loc[:, group_j] >= freq[group_j][1]
-            filter_df1 = alt_freq_stat_df[mask1 & mask2]
-            mask3 = alt_freq_stat_df.loc[:, group_i] >= freq[group_i][1]
-            mask4 = alt_freq_stat_df.loc[:, group_j] <= freq[group_j][0]
-            filter_df2 = alt_freq_stat_df[mask3 & mask4]
-            alt_freq_stat_df = pd.concat([filter_df1, filter_df2],
-                                         sort=False)
-            alt_freq_stat_df = alt_freq_stat_df.sort_index()
+def snpfreq2rep(alt_freq, alt_cut, ref_cut):
+    if alt_freq >= alt_cut:
+        return SnpRep.alt.value
+    elif alt_freq <= ref_cut:
+        return SnpRep.ref.value
+    elif pd.isna(alt_freq):
+        return SnpRep.unkown.value
     else:
-        if cols[0] in alt_freq_stat_df.columns:
-            mask1 = alt_freq_stat_df.loc[:, cols[0]] <= freq[cols[0]][0]
-            mask2 = alt_freq_stat_df.loc[:, cols[0]] >= freq[cols[0]][1]
-            alt_freq_stat_df = alt_freq_stat_df[mask1 | mask2]
-    return alt_freq_stat_df
+        return np.nan
+
+
+def equal2parent(snp_rep_df, child, parent):
+    if parent in snp_rep_df.columns:
+        mask1 = snp_rep_df.loc[:, child] == snp_rep_df.loc[:, parent]
+        mask2 = snp_rep_df.loc[:, parent] == SnpRep.unkown
+        return snp_rep_df[mask1 | mask2]
+    else:
+        return snp_rep_df
 
 
 def filter_snp(alt_freq_stat_df, freq_dict, filter_label, filter_freq_stats):
-    alt_freq_stat_filter_df = alt_freq_stat_df.copy()
-    for n, cols_i in enumerate([['mutant', 'wild'],
-                                ['mutant_parent', 'wild_parent'],
-                                ['background']]):
-        alt_freq_stat_filter_df = filter_alt_stat(alt_freq_stat_filter_df,
-                                                  cols_i,
-                                                  freq_dict)
-    alt_freq_stat_filter_df.to_csv(filter_freq_stats)
+    alt_rep_df = alt_freq_stat_df.copy()
+    for name, member in SnpGroup.__members__.items():
+        if member.value not in alt_rep_df.columns:
+            continue
+        ref_cut, alt_cut = freq_dict[member.value]
+        alt_rep_df.loc[:, member.value] = [
+            snpfreq2rep(alt_freq_i, alt_cut, ref_cut)
+            for alt_freq_i in alt_rep_df.loc[:, member.value]]
+    # step1 remove non ref/alt
+    alt_rep_df.dropna(inplace=True)
+    # step2 child equal to parent or parent unkown
+    alt_rep_df = equal2parent(alt_rep_df,
+                              SnpGroup.mut.value,
+                              SnpGroup.mut_pa.value)
+    alt_rep_df = equal2parent(alt_rep_df,
+                              SnpGroup.wild.value,
+                              SnpGroup.wild_pa.value)
+    # step3 mutant not equal to wild
+    mask = alt_rep_df.loc[:, SnpGroup.mut.value] \
+        != alt_rep_df.loc[:, SnpGroup.wild.value]
+    alt_rep_df = alt_rep_df[mask]
+    alt_freq_stat_filter_df = alt_freq_stat_df.loc[alt_rep_df.index]
+    alt_freq_stat_filter_df.to_csv(filter_freq_stats, index=False)
     return alt_freq_stat_filter_df
 
 
@@ -140,9 +169,7 @@ def snp_freq_by_window(stat_df,
                        group_label,
                        window_file,
                        outdir):
-    groups = stat_df.columns[3:]
-    if 'background' in groups:
-        groups = groups.drop('background')
+    groups = [SnpGroup.mut.value, SnpGroup.wild.value]
     alt_freq_stat_bed = outdir / f'{group_label}.snp.plot.bed'
     if not is_valid_file(alt_freq_stat_bed):
         alt_freq_stat_df = stat_df.copy()
@@ -174,6 +201,7 @@ def cal_score(intersect_df, method='var', min_snp_num=10):
     varscore_size_df = intersect_df.groupby(
         ['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
+    intersect_df = intersect_df.loc[:, ]
     if method == 'var':
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End']).agg(
