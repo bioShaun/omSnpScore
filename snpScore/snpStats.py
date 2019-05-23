@@ -197,7 +197,22 @@ def log_varscore(row):
     return np.power(-np.log10(reduce(lambda a, b:  a * b, row)), 10)
 
 
-def cal_score(intersect_df, method='var', min_snp_num=10):
+def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
+    if mut == 'alt':
+        mut_freq = freq_dict[SnpGroup.mut.value][1]
+        wild_freq = freq_dict[SnpGroup.wild.value][0]
+    else:
+        mut_freq = freq_dict[SnpGroup.mut.value][0]
+        wild_freq = freq_dict[SnpGroup.wild.value][1]
+    if np.isinf(mut_freq) or np.isinf(wild_freq):
+        return None
+    else:
+        intersect_df.loc[:, SnpGroup.mut.value] = mut_freq
+        intersect_df.loc[:, SnpGroup.wild.value] = wild_freq
+        return intersect_df
+
+
+def cal_score(intersect_df, freq_dict, method='var', min_snp_num=10):
     varscore_size_df = intersect_df.groupby(
         ['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
@@ -205,15 +220,21 @@ def cal_score(intersect_df, method='var', min_snp_num=10):
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End']).agg(
                 lambda x: np.var(x))
-    # elif method == 'est':
-    #     for n, group_i in enumerate(groups):
-    #         intersect_df.loc[:, group_i] = intersect_df.loc[
-    #             :, group_i] - est[n]
-
-    #     varscore_df = intersect_df.groupby(
-    #         ['Chrom', 'Start', 'End', 'Label']).agg(
-    #             lambda x: np.average(np.power(x, 2))
-    #     )
+    elif 'est' in method:
+        intersect_df = intersect_df.set_index(
+            ['Chrom', 'Start', 'End'])
+        alt_freq_df = intersect_df.copy()
+        mut_stat = method.split('_')[-1]
+        mut_wild_ext_df = mut_wild_ext_freq(
+            alt_freq_df, freq_dict, mut=mut_stat)
+        if mut_wild_ext_df is None:
+            return None
+        else:
+            intersect_df = intersect_df - mut_wild_ext_df
+        varscore_df = intersect_df.groupby(
+            ['Chrom', 'Start', 'End']).agg(
+                lambda x: np.average(np.power(x, 2))
+        )
     elif method == 'snp_index':
         varscore_df = intersect_df.groupby(
             ['Chrom', 'Start', 'End']).agg('mean')
@@ -235,7 +256,7 @@ def cal_score(intersect_df, method='var', min_snp_num=10):
 def score_plot(score_file, method):
     out_prefix = score_file.with_suffix('.plot')
     plot_name = score_file.stem
-    if method in ['var', 'est', 'density']:
+    if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density']:
         out_plot = score_file.with_suffix('.plot.jpg')
     elif method == 'snp_index':
         out_plot = score_file.with_suffix('')
