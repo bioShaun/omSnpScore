@@ -61,13 +61,18 @@ def merge_snpeff_anno(snp_anno_obj):
 def extract_snpeff_anno(anno_line):
     anno_stats = []
     fileds = (1, 3, 9)
-
-    anno_line_stats = anno_line.split(",")
+    gene_anno = anno_line.split(';')[0]
+    anno_line_stats = gene_anno.split(",")
     for annStr in anno_line_stats:
         annDetailArray = annStr.split("|")
         filed_stats = []
         for filled_i in fileds:
-            filed_stats.append(annDetailArray[filled_i])
+            try:
+                filed_stats.append(annDetailArray[filled_i])
+            except IndexError as e:
+                print(anno_line_stats)
+                print(annDetailArray)
+                sys.exit(1)
         anno_stats.append(filed_stats)
     zip_anno_stats = list(map(merge_snpeff_anno, zip(*anno_stats)))
     return zip_anno_stats
