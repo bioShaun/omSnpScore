@@ -165,7 +165,7 @@ def main(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
 
     # step2 intersect with snp ann bed
     snp_ann_dir = PurePath(snp_ann_dir)
-    snp_bed_file = snp_ann_dir / 'ann.table.bed'
+    snp_bed_file = snp_ann_dir / 'snp.ann.table.bed'
     logger.info('Finding target region snp...')
     target_snp_df = find_target_region_snp(snp_bed_file, target_region_bed)
 

@@ -23,19 +23,20 @@ class snpAnnDb:
     def __init__(self, db_dir):
         self.sp_dbs = set(glob.glob('{}/*.ann.table'.format(db_dir)))
         self.db_inf_dict = dict()
-        self.db = Path(db_dir) / 'snp.ann.table.csv'
-        self.db_inf_json = Path(db_dir) / 'ann.table.inf.json'
-        self.db_bed = Path(db_dir) / 'ann.table.bed'
-        self.bak_db = Path(db_dir) / 'bak.snp.ann.table.csv'
-        self.bak_db_inf_json = Path(db_dir) / 'bak.ann.table.inf.json'
-        self.bak_db_bed = Path(db_dir) / 'bak.ann.table.bed'
+        self.db = Path(db_dir) / 'snp.ann.table.pkl'
+        self.db_inf_json = Path(db_dir) / 'snp.ann.table.inf.json'
+        self.db_bed = Path(db_dir) / 'snp.ann.table.bed'
+        self.bak_db = Path(db_dir) / 'bak.snp.ann.table.pkl'
+        self.bak_db_inf_json = Path(db_dir) / 'bak.snp.ann.table.inf.json'
+        self.bak_db_bed = Path(db_dir) / 'bak.snp.ann.table.bed'
         self.db_df = None
 
     def load_db(self, db_stat='current'):
         if db_stat == 'current':
-            db_inf, db_file, db_bed = self.db_inf_json, self.db, self.db_bed
+            db_inf, db_file, db_bed = (self.db_inf_json, self.db, self.db_bed)
         elif db_stat == 'bak':
-            db_inf, db_file, db_bed = self.bak_db_inf_json, self.bak_db, self.bak_db_bed
+            db_inf, db_file, db_bed = (self.bak_db_inf_json, self.bak_db,
+                                       self.bak_db_bed)
         else:
             raise (ValueError,
                    'unsupport db stat value [{}], current or bak.'.format(
@@ -43,7 +44,7 @@ class snpAnnDb:
         if db_bed.is_file():
             logger.info('Loading old db...')
             self.db_inf_dict = json.load(open(db_inf))
-            self.db_df = pd.read_csv(db_file)
+            self.db_df = pd.read_pickle(db_file)
             if len(self.db_df) == self.db_inf_dict.get('snp_number', 0):
                 return True
         return False
@@ -88,7 +89,7 @@ class snpAnnDb:
     def save_db(self):
         logger.info('Save new db...')
         json.dump(self.db_inf_dict, open(self.db_inf_json, 'w'))
-        self.db_df.to_csv(self.db, index=False)
+        self.db_df.to_pickle(self.db)
         self.db_bed_df.to_csv(self.db_bed, sep='\t', index=False, header=False)
 
 
