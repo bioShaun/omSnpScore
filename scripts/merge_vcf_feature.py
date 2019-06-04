@@ -1,0 +1,113 @@
+import glob
+import json
+import click
+import pandas as pd
+from pathlib import Path
+from loguru import logger
+
+SNP_ID_COL = ('#CHROM', 'POS', 'REF', 'ALT')
+BED_COL = ('#CHROM', 'POS')
+
+
+def tableList2Df(table_list):
+    df_list = list()
+    for file_i in table_list:
+        logger.info('Read snp table {}...'.format(file_i))
+        df_i = pd.read_csv(file_i, sep='\t')
+        df_list.append(df_i)
+    merged_df = pd.concat(df_list)
+    return merged_df
+
+
+class snpAnnDb:
+    def __init__(self, db_dir):
+        self.sp_dbs = set(glob.glob('{}/*.ann.table'.format(db_dir)))
+        self.db_inf_dict = dict()
+        self.db = Path(db_dir) / 'snp.ann.table.csv'
+        self.db_inf_json = Path(db_dir) / 'ann.table.inf.json'
+        self.db_bed = Path(db_dir) / 'ann.table.bed'
+        self.bak_db = Path(db_dir) / 'bak.snp.ann.table.csv'
+        self.bak_db_inf_json = Path(db_dir) / 'bak.ann.table.inf.json'
+        self.bak_db_bed = Path(db_dir) / 'bak.ann.table.bed'
+        self.db_df = None
+
+    def load_db(self, db_stat='current'):
+        if db_stat == 'current':
+            db_inf, db_file, db_bed = self.db_inf_json, self.db, self.db_bed
+        elif db_stat == 'bak':
+            db_inf, db_file, db_bed = self.bak_db_inf_json, self.bak_db, self.bak_db_bed
+        else:
+            raise (ValueError,
+                   'unsupport db stat value [{}], current or bak.'.format(
+                       db_stat))
+        if db_bed.is_file():
+            logger.info('Loading old db...')
+            self.db_inf_dict = json.load(open(db_inf))
+            self.db_df = pd.read_csv(db_file)
+            if len(self.db_df) == self.db_inf_dict.get('snp_number', 0):
+                return True
+        return False
+
+    def check_new_db(self):
+        record_db_files = self.db_inf_dict.get('ann_tables', set())
+        self.new_db_files = self.sp_dbs.difference(record_db_files)
+        if self.new_db_files:
+            return True
+        else:
+            logger.info('No new db files.')
+            return False
+
+    def add_new_record(self):
+        logger.info('Add new db records to old db...')
+        self.new_db_df = tableList2Df(self.new_db_files)
+        if self.db_df is None:
+            self.db_df = self.new_db_df
+        else:
+            self.db_df = pd.concat([self.db_df, self.new_db_df])
+        self.db_df.drop_duplicates(subset=SNP_ID_COL, inplace=True)
+
+    def backup_db(self):
+        logger.info('Backup old db...')
+        if self.db_bed.is_file():
+            self.db.rename(self.bak_db)
+            self.db_inf_json.rename(self.bak_db_inf_json)
+            self.db_bed.rename(self.bak_db_bed)
+
+    def update_db_inf(self):
+        logger.info('Update new db information...')
+        self.db_inf_dict['snp_number'] = len(self.db_df)
+        self.db_inf_dict['ann_tables'] = list(self.sp_dbs)
+
+    def make_bed(self):
+        logger.info('Make snp bed table...')
+        self.db_bed_df = self.db_df.loc[:, BED_COL]
+        self.db_bed_df.loc[:, 'Start'] = self.db_bed_df.loc[:, BED_COL[1]] - 1
+        self.db_bed_df = self.db_bed_df.loc[:,
+                                            [BED_COL[0], 'Start', BED_COL[1]]]
+
+    def save_db(self):
+        logger.info('Save new db...')
+        json.dump(self.db_inf_dict, open(self.db_inf_json, 'w'))
+        self.db_df.to_csv(self.db, index=False)
+        self.db_bed_df.to_csv(self.db_bed, sep='\t', index=False, header=False)
+
+
+@click.command()
+@click.option('--vcf_ann_dir',
+              type=click.Path(file_okay=False, exists=True),
+              required=True)
+def main(vcf_ann_dir):
+    vcf_ann_db = snpAnnDb(vcf_ann_dir)
+    if not vcf_ann_db.load_db('current'):
+        vcf_ann_db.load_db('bak')
+    if vcf_ann_db.check_new_db():
+        vcf_ann_db.add_new_record()
+        vcf_ann_db.backup_db()
+        vcf_ann_db.update_db_inf()
+        vcf_ann_db.make_bed()
+        vcf_ann_db.save_db()
+    logger.info('The End.')
+
+
+if __name__ == "__main__":
+    main()
