@@ -12,7 +12,6 @@ suppressMessages(library(gridExtra))
 suppressMessages(library(omplotr))
 
 
-
 options(stringsAsFactors = F)
 p <- arg_parser("snp score plot")
 p <- add_argument(
