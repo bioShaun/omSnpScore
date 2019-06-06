@@ -122,7 +122,7 @@ def snp_reads_inf(snp_freq_obj):
 def df2list(df):
     df_list = list()
     if not df.empty:
-        df_list.append(df.columns)
+        df_list.append(list(df.columns))
         for index_i in df.index:
             df_list.append(list(df.loc[index_i]))
     return df_list
