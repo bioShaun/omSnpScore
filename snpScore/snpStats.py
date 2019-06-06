@@ -44,17 +44,17 @@ def load_hd5(hd5_file, index_cols=None):
     return table_df
 
 
-def groups_from_params(params):
+def groups_from_params(params, group_names=GROUPS):
     groups_list = []
-    for group_i in GROUPS:
+    for group_i in group_names:
         if params.get(group_i):
             groups_list.extend([group_i] * len(params[group_i]))
     return ','.join(groups_list)
 
 
-def vcfs_from_params(params, data_dir):
+def vcfs_from_params(params, data_dir, group_names=GROUPS):
     data_list = []
-    for group_i in GROUPS:
+    for group_i in group_names:
         if params.get(group_i) is None:
             continue
         for each_sample in params[group_i]:
@@ -105,15 +105,14 @@ def filter_snp(alt_freq_stat_df, freq_dict, filter_label, filter_freq_stats):
         ref_cut, alt_cut = freq_dict[member.value]
         alt_rep_df.loc[:, member.value] = [
             snpfreq2rep(alt_freq_i, alt_cut, ref_cut)
-            for alt_freq_i in alt_rep_df.loc[:, member.value]]
+            for alt_freq_i in alt_rep_df.loc[:, member.value]
+        ]
     # step1 remove non ref/alt
     alt_rep_df.dropna(inplace=True)
     # step2 child equal to parent or parent unkown
-    alt_rep_df = equal2parent(alt_rep_df,
-                              SnpGroup.mut.value,
+    alt_rep_df = equal2parent(alt_rep_df, SnpGroup.mut.value,
                               SnpGroup.mut_pa.value)
-    alt_rep_df = equal2parent(alt_rep_df,
-                              SnpGroup.wild.value,
+    alt_rep_df = equal2parent(alt_rep_df, SnpGroup.wild.value,
                               SnpGroup.wild_pa.value)
     # step3 mutant not equal to wild
     mask = alt_rep_df.loc[:, SnpGroup.mut.value] \
@@ -145,8 +144,10 @@ def make_snp_number_windows(stat_df, group_label, window, step, outdir):
             snp_num_window_list.append([score_chrom, start, end])
         snp_num_window_df = pd.DataFrame(snp_num_window_list,
                                          columns=['Chrom', 'Start', 'End'])
-        snp_num_window_df.to_csv(
-            snp_num_window_file, sep='\t', index=False, header=False)
+        snp_num_window_df.to_csv(snp_num_window_file,
+                                 sep='\t',
+                                 index=False,
+                                 header=False)
     return snp_num_window_file
 
 
@@ -158,17 +159,15 @@ def make_genome_windows(chr_size, window, step, outdir):
                ' > {window_file}'.format(**locals()))
 
         delegator.run(cmd)
-        window_df = pd.read_csv(window_file, sep='\t', header=None,
+        window_df = pd.read_csv(window_file,
+                                sep='\t',
+                                header=None,
                                 names=['Chrom', 'Start', 'End'])
-        window_df.to_csv(window_file, sep='\t', index=False,
-                         header=False)
+        window_df.to_csv(window_file, sep='\t', index=False, header=False)
     return window_file
 
 
-def snp_freq_by_window(stat_df,
-                       group_label,
-                       window_file,
-                       outdir):
+def snp_freq_by_window(stat_df, group_label, window_file, outdir):
     groups = [SnpGroup.mut.value, SnpGroup.wild.value]
     alt_freq_stat_bed = outdir / f'{group_label}.snp.plot.bed'
     if not is_valid_file(alt_freq_stat_bed):
@@ -176,8 +175,11 @@ def snp_freq_by_window(stat_df,
         alt_freq_stat_df.loc[:, 'start'] = alt_freq_stat_df.Pos - 1
         bed_cols = ['Chr', 'start', 'Pos']
         bed_cols.extend(groups)
-        alt_freq_stat_df.to_csv(alt_freq_stat_bed, sep='\t',
-                                columns=bed_cols, header=None, index=False)
+        alt_freq_stat_df.to_csv(alt_freq_stat_bed,
+                                sep='\t',
+                                columns=bed_cols,
+                                header=None,
+                                index=False)
     window_bed = BedTool(str(window_file))
     snp_bed = BedTool(str(alt_freq_stat_bed))
     intersect_obj = window_bed.intersect(snp_bed, sorted=True, wo=True)
@@ -186,15 +188,18 @@ def snp_freq_by_window(stat_df,
     intersect_obj_cols.extend(groups)
     intersect_obj_cols.append('overlap')
     intersect_str = StringIO(str(intersect_obj))
-    intersect_df = pd.read_csv(intersect_str, sep='\t', header=None,
+    intersect_df = pd.read_csv(intersect_str,
+                               sep='\t',
+                               header=None,
                                names=intersect_obj_cols)
-    intersect_df.drop(['snp_Chrom', 'snp_start', 'snp_end',
-                       'overlap'], axis=1, inplace=True)
+    intersect_df.drop(['snp_Chrom', 'snp_start', 'snp_end', 'overlap'],
+                      axis=1,
+                      inplace=True)
     return intersect_df
 
 
 def log_varscore(row):
-    return np.power(-np.log10(reduce(lambda a, b:  a * b, row)), 10)
+    return np.power(-np.log10(reduce(lambda a, b: a * b, row)), 10)
 
 
 def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
@@ -213,31 +218,28 @@ def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
 
 
 def cal_score(intersect_df, freq_dict, method='var', min_snp_num=10):
-    varscore_size_df = intersect_df.groupby(
-        ['Chrom', 'Start', 'End']).size()
+    varscore_size_df = intersect_df.groupby(['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
     if method == 'var':
-        varscore_df = intersect_df.groupby(
-            ['Chrom', 'Start', 'End']).agg(
-                lambda x: np.var(x))
+        varscore_df = intersect_df.groupby(['Chrom', 'Start',
+                                            'End']).agg(lambda x: np.var(x))
     elif 'est' in method:
-        intersect_df = intersect_df.set_index(
-            ['Chrom', 'Start', 'End'])
+        intersect_df = intersect_df.set_index(['Chrom', 'Start', 'End'])
         alt_freq_df = intersect_df.copy()
         mut_stat = method.split('_')[-1]
-        mut_wild_ext_df = mut_wild_ext_freq(
-            alt_freq_df, freq_dict, mut=mut_stat)
+        mut_wild_ext_df = mut_wild_ext_freq(alt_freq_df,
+                                            freq_dict,
+                                            mut=mut_stat)
         if mut_wild_ext_df is None:
             return None
         else:
             intersect_df = intersect_df - mut_wild_ext_df
         varscore_df = intersect_df.groupby(
-            ['Chrom', 'Start', 'End']).agg(
-                lambda x: np.average(np.power(x, 2))
-        )
+            ['Chrom', 'Start',
+             'End']).agg(lambda x: np.average(np.power(x, 2)))
     elif method == 'snp_index':
-        varscore_df = intersect_df.groupby(
-            ['Chrom', 'Start', 'End']).agg('mean')
+        varscore_df = intersect_df.groupby(['Chrom', 'Start',
+                                            'End']).agg('mean')
     else:
         sys.exit('Wrong analysis method.')
     varscore_df = varscore_df[mask]
@@ -246,16 +248,15 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=10):
         varscore_df.loc[:, 'snp_score'] = varscore_df.loc[:, group0] - \
             varscore_df.loc[:, group1]
     else:
-        varscore_df = varscore_df.applymap(
-            lambda x: x if x >= OFFSET else OFFSET)
-        varscore_df.loc[:, 'snp_score'] = varscore_df.apply(
-            log_varscore, axis=1)
+        varscore_df = varscore_df.applymap(lambda x: x
+                                           if x >= OFFSET else OFFSET)
+        varscore_df.loc[:, 'snp_score'] = varscore_df.apply(log_varscore,
+                                                            axis=1)
     return varscore_df
 
 
 def score_plot(score_file, method):
     out_prefix = score_file.with_suffix('.plot')
-    plot_name = score_file.stem
     if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density']:
         out_plot = score_file.with_suffix('.plot.jpg')
     elif method == 'snp_index':
@@ -266,12 +267,10 @@ def score_plot(score_file, method):
     cmd = ('Rscript {SNP_SCORE_PLOT} '
            '--input {score_file} '
            '--output {out_prefix} '
-           '--plot_type {method}'.format(
-               SNP_SCORE_PLOT=SNP_SCORE_PLOT,
-               score_file=score_file,
-               out_prefix=out_prefix,
-               method=method
-           ))
+           '--plot_type {method}'.format(SNP_SCORE_PLOT=SNP_SCORE_PLOT,
+                                         score_file=score_file,
+                                         out_prefix=out_prefix,
+                                         method=method))
     if not out_plot.exists():
         return cmd
     else:
