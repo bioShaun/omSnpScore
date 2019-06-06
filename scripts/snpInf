@@ -141,15 +141,6 @@ def snp_reads_inf(snp_freq_obj):
               type=click.Path(),
               help='output directory.',
               required=True)
-@click.option('--genes',
-              type=click.STRING,
-              help=('show snp information on the genes provided, '
-                    'seperated with ",".'),
-              default=None)
-@click.option('--position',
-              type=click.STRING,
-              help='show snp information on provided position.',
-              default=None)
 def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
     # step0 extract parameters
     parameters_obj = json.loads(parameters)
