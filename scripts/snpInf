@@ -119,6 +119,15 @@ def snp_reads_inf(snp_freq_obj):
     return grp_reads_df
 
 
+def df2list(df):
+    df_list = list()
+    if not df.empty:
+        df_list.append(df.columns)
+        for index_i in df.index:
+            df_list.append(list(df.loc[index_i]))
+    return df_list
+
+
 @click.command()
 @click.option('--gene_bed',
               type=click.Path(exists=True, dir_okay=False),
@@ -151,11 +160,11 @@ def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
     group_names = parameters_obj.get('group_names')
     group_labels = core.snpStats.groups_from_params(parameters_obj,
                                                     group_names)
+    vcf_table_files = core.snpStats.vcfs_from_params(parameters_obj,
+                                                     snp_data_dir, group_names)
     if len(group_names) == 1:
         if group_names[0] == 'not_a_group_id':
             group_labels = ''
-    vcf_table_files = core.snpStats.vcfs_from_params(parameters_obj,
-                                                     group_names)
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     # step1 make selected gene/region bedfile
@@ -225,14 +234,8 @@ def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
     freq_df = freq_df.reset_index()
     flat_target_snp_ann_freq_df = flat_target_snp_ann_df.merge(freq_df)
     flat_target_snp_ann_freq_df.sort_values(['#CHROM', 'POS'], inplace=True)
-    if not flat_target_snp_ann_freq_df.empty:
-        target_region_snp_inf_file = outdir / 'target_region_snp_inf.txt'
-        flat_target_snp_ann_freq_df.to_csv(target_region_snp_inf_file,
-                                           sep='\t',
-                                           index=False)
-    else:
-        logger.warning('No snp was covered by reads in target region.')
-
+    flat_target_snp_ann_freq_list = df2list(flat_target_snp_ann_freq_df)
+    print(flat_target_snp_ann_freq_list)
     logger.info('The End.')
 
 
