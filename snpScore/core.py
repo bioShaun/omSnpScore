@@ -110,11 +110,6 @@ class SNPscore:
             logfile,
             format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}")
 
-    def check_dominant(self):
-        check_mut_wild = (self.mutant_dominant,
-                          self.wild_dominant) != ('yes', 'yes')
-        assert check_mut_wild, 'Only one of mutant/wild can be dominant'
-
     def check_freq(self):
         freq_accordance(
             self.mutant_alt_exp,
@@ -231,12 +226,6 @@ class SNPscore:
             self.snp_number_window,
             self.snp_number_step,
             self.outdir)
-        # logger.info(
-        #     'making genome slidewindow bed file windows {w} step {s}...',
-        #     w=self.genome_window, s=self.genome_step)
-        # self.snp_genome_window_file = snpStats.make_genome_windows(
-        #     CHR_SIZE, self.genome_window,
-        #     self.genome_step, self.outdir)
         self.windows_files = [self.snp_num_window_file]
 
     def snp_score(self):
@@ -285,7 +274,6 @@ class SNPscore:
     @property
     def run(self):
         self.init_logger()
-        self.check_dominant()
         self.check_freq()
         self.make_freq_dict()
         self.check_groups()
