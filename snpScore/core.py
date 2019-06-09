@@ -139,7 +139,6 @@ class SNPscore:
             self.freq_dict.update({
                 member.value: [ref_cut, alt_cut]
             })
-        print(self.methods_list)
         if self.mutant_alt_exp and self.wild_alt_exp:
             self.methods_list.extend(['est_mut_alt', 'est_mut_ref'])
 
