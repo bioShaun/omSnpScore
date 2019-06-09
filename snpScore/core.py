@@ -77,7 +77,7 @@ class SNPscore:
                  snp_number_step=5,
                  genome_window=1000000,
                  genome_step=500000,
-                 methods='var,snp_index,est_mut_alt,est_mut_ref',
+                 methods='var,snp_index',
                  tow_side=False):
         self.outdir = Path(outdir)
         self.vcf_table_file_list = vcf_table_files.split(',')
@@ -135,12 +135,13 @@ class SNPscore:
             self.background_alt_exp]
         for n, snp_group_i in enumerate(snpStats.SnpGroup.__members__.items()):
             name, member = snp_group_i
-            ref_cut, alt_cut = alt_ref_cut(freq)
+            ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n])
             self.freq_dict.update({
                 member.value: [ref_cut, alt_cut]
             })
+        print(self.methods_list)
         if self.mutant_alt_exp and self.wild_alt_exp:
-            self.methods_list.extend(['ext_mut_alt', 'ext_mut_ref'])
+            self.methods_list.extend(['est_mut_alt', 'est_mut_ref'])
 
     def check_groups(self):
         group_pairs = [[snpStats.SnpGroup.mut.value,

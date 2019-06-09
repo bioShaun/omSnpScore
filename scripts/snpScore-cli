@@ -89,7 +89,7 @@ from snpScore import core
 @click.option(
     '--methods',
     help='snp score calculation methods.',
-    default='var,snp_index,est_mut_alt,est_mut_ref',
+    default='var,snp_index',
     type=click.STRING
 )
 def main(vcf_table_files,
