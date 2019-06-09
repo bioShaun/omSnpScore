@@ -16,8 +16,6 @@ SEMA = asyncio.Semaphore(20)
 SNP_FREQ_BIAS = 0.1
 ALT_FREQ = np.round(2 / 3 - SNP_FREQ_BIAS, 2)
 REF_FREQ = np.round(1 / 3 + SNP_FREQ_BIAS, 2)
-DOMINANT_ALT_FREQ = 0.9
-DOMINANT_REF_freq = 0.1
 
 
 async def launch_cmd(cmd):
@@ -49,14 +47,10 @@ def freq_accordance(freq_a, freq_b, message, equal=True):
         assert flag_a or flag_b, message
 
 
-def alt_ref_cut(freq, dominant):
+def alt_ref_cut(freq):
     if freq is None:
-        if dominant == 'yes':
-            ref_cut = DOMINANT_REF_freq
-            alt_cut = DOMINANT_ALT_FREQ
-        else:
-            ref_cut = REF_FREQ
-            alt_cut = ALT_FREQ
+        ref_cut = REF_FREQ
+        alt_cut = ALT_FREQ
     else:
         if freq > 0.5:
             ref_cut = -np.inf
@@ -78,9 +72,6 @@ class SNPscore:
                  mutant_parent_alt_exp=None,
                  wild_parent_alt_exp=None,
                  background_alt_exp=None,
-                 mutant_dominant='no',
-                 wild_dominant='no',
-                 background_dominant='no',
                  min_depth=5,
                  snp_number_window=10,
                  snp_number_step=5,
@@ -103,16 +94,13 @@ class SNPscore:
         self.genome_window = default_value(genome_window, 1000000)
         self.genome_step = default_value(genome_step, 500000)
         methods = default_value(
-            methods, 'var,snp_index,ext_mut_alt,ext_mut_ref')
+            methods, 'var,snp_index')
         self.methods_list = methods.split(',')
         self.mutant_alt_exp = mutant_alt_exp
         self.wild_alt_exp = wild_alt_exp
         self.mutant_parent_alt_exp = mutant_parent_alt_exp
         self.wild_parent_alt_exp = wild_parent_alt_exp
         self.background_alt_exp = background_alt_exp
-        self.mutant_dominant = mutant_dominant
-        self.wild_dominant = wild_dominant
-        self.background_dominant = background_dominant
         self.freq_dict = OrderedDict()
         self.plot_cmds = []
 
@@ -150,20 +138,14 @@ class SNPscore:
             self.mutant_parent_alt_exp,
             self.wild_parent_alt_exp,
             self.background_alt_exp]
-        dominant_list = [
-            self.mutant_dominant,
-            self.wild_dominant,
-            self.mutant_dominant,
-            self.wild_dominant,
-            self.background_dominant]
-        freq_dominant_list = list(zip(alt_freq_list, dominant_list))
         for n, snp_group_i in enumerate(snpStats.SnpGroup.__members__.items()):
             name, member = snp_group_i
-            freq, dominant = freq_dominant_list[n]
-            ref_cut, alt_cut = alt_ref_cut(freq, dominant)
+            ref_cut, alt_cut = alt_ref_cut(freq)
             self.freq_dict.update({
                 member.value: [ref_cut, alt_cut]
             })
+        if self.mutant_alt_exp and self.wild_alt_exp:
+            self.methods_list.extend(['ext_mut_alt', 'ext_mut_ref'])
 
     def check_groups(self):
         group_pairs = [[snpStats.SnpGroup.mut.value,
