@@ -37,6 +37,8 @@ def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
     chrom_end = parameters_obj.get('chrom_end')
     if chrom:
         position = f'{chrom}:{chrom_start}-{chrom_end}'
+    else:
+        position = ''
     group_names = parameters_obj.get('group_names')
     group_labels = core.snpStats.groups_from_params(parameters_obj,
                                                     group_names)

@@ -199,7 +199,7 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
     flat_target_snp_ann_freq_df = flat_target_snp_ann_df.merge(freq_df)
     flat_target_snp_ann_freq_df.sort_values(['#CHROM', 'POS'], inplace=True)
     if outfmt == 'json':
-        flat_target_snp_ann_freq_list = snpAnn.df2list(flat_target_snp_ann_freq_df)
+        flat_target_snp_ann_freq_list = df2list(flat_target_snp_ann_freq_df)
         print(flat_target_snp_ann_freq_list)
     else:
         if not flat_target_snp_ann_freq_df.empty:
