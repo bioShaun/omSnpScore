@@ -173,7 +173,7 @@ def snp_freq_by_window(stat_df, group_label, window_file, outdir):
     if not is_valid_file(alt_freq_stat_bed):
         alt_freq_stat_df = stat_df.copy()
         alt_freq_stat_df.loc[:, 'start'] = alt_freq_stat_df.Pos - 1
-        bed_cols = ['Chr', 'start', 'Pos']
+        bed_cols = ['Chr', 'start', 'Pos', 'Alt']
         bed_cols.extend(groups)
         alt_freq_stat_df.to_csv(alt_freq_stat_bed,
                                 sep='\t',
@@ -184,7 +184,7 @@ def snp_freq_by_window(stat_df, group_label, window_file, outdir):
     snp_bed = BedTool(str(alt_freq_stat_bed))
     intersect_obj = window_bed.intersect(snp_bed, sorted=True, wo=True)
     intersect_obj_cols = ['Chrom', 'Start', 'End']
-    intersect_obj_cols.extend(['snp_Chrom', 'snp_start', 'snp_end'])
+    intersect_obj_cols.extend(['snp_Chr', 'snp_start', 'Pos', 'Alt'])
     intersect_obj_cols.extend(groups)
     intersect_obj_cols.append('overlap')
     intersect_str = StringIO(str(intersect_obj))
@@ -192,7 +192,7 @@ def snp_freq_by_window(stat_df, group_label, window_file, outdir):
                                sep='\t',
                                header=None,
                                names=intersect_obj_cols)
-    intersect_df.drop(['snp_Chrom', 'snp_start', 'snp_end', 'overlap'],
+    intersect_df.drop(['snp_Chr', 'snp_start', 'overlap'],
                       axis=1,
                       inplace=True)
     return intersect_df
@@ -217,15 +217,17 @@ def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
         return intersect_df
 
 
-def cal_score(intersect_df, freq_dict, method='var', min_snp_num=10):
-    varscore_size_df = intersect_df.groupby(['Chrom', 'Start', 'End']).size()
+def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
+    stats_cols = ['Chrom', 'Start', 'End', SnpGroup.mut.value, SnpGroup.wild.value]
+    stats_df = intersect_df.loc[:, stats_cols]
+    varscore_size_df = stats_df.groupby(['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
     if method == 'var':
-        varscore_df = intersect_df.groupby(['Chrom', 'Start',
+        varscore_df = stats_df.groupby(['Chrom', 'Start',
                                             'End']).agg(lambda x: np.var(x))
     elif 'est' in method:
-        intersect_df = intersect_df.set_index(['Chrom', 'Start', 'End'])
-        alt_freq_df = intersect_df.copy()
+        stats_df = stats_df.set_index(['Chrom', 'Start', 'End'])
+        alt_freq_df = stats_df.copy()
         mut_stat = method.split('_')[-1]
         mut_wild_ext_df = mut_wild_ext_freq(alt_freq_df,
                                             freq_dict,
@@ -233,12 +235,12 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=10):
         if mut_wild_ext_df is None:
             return None
         else:
-            intersect_df = intersect_df - mut_wild_ext_df
-        varscore_df = intersect_df.groupby(
+            stats_df = stats_df - mut_wild_ext_df
+        varscore_df = stats_df.groupby(
             ['Chrom', 'Start',
              'End']).agg(lambda x: np.average(np.power(x, 2)))
     elif method == 'snp_index':
-        varscore_df = intersect_df.groupby(['Chrom', 'Start',
+        varscore_df = stats_df.groupby(['Chrom', 'Start',
                                             'End']).agg('mean')
     else:
         sys.exit('Wrong analysis method.')

@@ -13,6 +13,12 @@ from snpScore import core
     type=click.STRING
 )
 @click.option(
+    '--vcf_ann_file',
+    help='snp annotation file.',
+    required=True,
+    type=click.Path()
+)
+@click.option(
     '-g',
     '--group_labels',
     help='vcf file groups, seperated with ",".',
@@ -105,8 +111,10 @@ def main(vcf_table_files,
          snp_number_step,
          genome_window,
          genome_step,
-         methods):
+         methods,
+         vcf_ann_file):
     snp_score_obj = core.SNPscore(vcf_table_files,
+                                  vcf_ann_file,
                                   group_labels,
                                   outdir,
                                   mutant_alt_exp,

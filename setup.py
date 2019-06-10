@@ -25,7 +25,8 @@ setup(
              'scripts/table2hd5',
              'scripts/snpScore-cli',
              'scripts/merge_vcf_feature',
-             'scripts/snpInf', ],
+             'scripts/snpInf', 
+             'scripts/snpInf-cli'],
     install_requires=[
         'click',
         'pandas',

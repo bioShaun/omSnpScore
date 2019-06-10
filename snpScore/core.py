@@ -7,7 +7,7 @@ from loguru import logger
 from pathlib import Path, PurePath
 from collections import OrderedDict
 from asyncio.subprocess import PIPE, STDOUT
-from . import snpStats
+from . import snpStats, snpAnn
 
 
 DATA_DIR = PurePath(pkg_resources.resource_filename('snpScore', 'data'))
@@ -65,6 +65,7 @@ class SNPscore:
 
     def __init__(self,
                  vcf_table_files,
+                 vcf_ann_file,
                  group_labels,
                  outdir,
                  mutant_alt_exp=None,
@@ -77,10 +78,10 @@ class SNPscore:
                  snp_number_step=5,
                  genome_window=1000000,
                  genome_step=500000,
-                 methods='var,snp_index',
-                 tow_side=False):
+                 methods='var,snp_index'):
         self.outdir = Path(outdir)
         self.vcf_table_file_list = vcf_table_files.split(',')
+        self.vcf_ann_file = vcf_ann_file
         self.group_label_list = group_labels.split(',')
         self.group_order = []
         self.mutant_wild_group = None
@@ -218,7 +219,7 @@ class SNPscore:
 
     def make_windows(self):
         logger.info(
-            'making snp number slidewindow bed file windows {w} step {s}...',
+            'Making snp number slidewindow bed file windows {w} step {s}...',
             w=self.snp_number_window, s=self.snp_number_step)
         self.snp_num_window_file = snpStats.make_snp_number_windows(
             self.snp_alt_filter_df,
@@ -228,6 +229,10 @@ class SNPscore:
             self.outdir)
         self.windows_files = [self.snp_num_window_file]
 
+    def load_snp_ann(self):
+        logger.info('Loding snp annotation...')
+        self.snp_ann_df = pd.read_pickle(self.vcf_ann_file)  
+
     def snp_score(self):
         for n, window_file in enumerate(self.windows_files):
             self.freq_dis_df = snpStats.snp_freq_by_window(
@@ -236,6 +241,18 @@ class SNPscore:
                 window_file,
                 self.outdir
             )
+            # add snp annotation to snp score region
+            self.freq_dis_ann_df = self.freq_dis_df.merge(self.snp_ann_df,
+                left_on=['Chrom', 'Pos', 'Alt'],
+                right_on=['#CHROM',	'POS', 'ALT'],
+                how='left')
+            self.freq_dis_ann_df.drop(
+                ['#CHROM', 'POS', 'Alt'],
+                inplace=True, axis=1)
+            self.freq_dis_ann_df.rename(columns={
+                snpStats.SnpGroup.mut.value: f'{snpStats.SnpGroup.mut.value}_alt_freq',
+                snpStats.SnpGroup.wild.value: f'{snpStats.SnpGroup.wild.value}_alt_freq',
+            }, inplace=True)
             for method in self.methods_list:
                 window_file_name = window_file.name
                 logger.info(
@@ -253,6 +270,27 @@ class SNPscore:
                                                    method=method)
                 if self.score_df is None:
                     continue
+
+                # add snp annotation to snp score table and flat
+                self.score_ann_df = self.score_df.merge(self.freq_dis_ann_df,
+                    left_on=['Chrom', 'Start', 'End'],
+                    right_on=['Chrom', 'Start', 'End'],
+                    how='left')
+                snpeff_anno = list(self.score_ann_df.INFO.map(snpAnn.extract_snpeff_anno))
+                snpeff_anno_df = pd.DataFrame(snpeff_anno)
+                snpeff_anno_df.columns = ['Feature', 'Gene', 'Transcript', 
+                    'Variant_DNA_Level', 'Variant_Protein_Level']
+                self.score_ann_df = pd.concat([self.score_ann_df, snpeff_anno_df], axis=1)                
+                self.score_ann_df.drop('INFO', axis=1, inplace=True)
+                self.score_ann_df = snpAnn.split_dataframe_rows(
+                    self.score_ann_df,
+                    column_selectors=['Feature', 'Gene', 'Transcript', 
+                        'Variant_DNA_Level', 'Variant_Protein_Level'],
+                    row_delimiter='|')
+                self.score_ann_file = self.outdir / \
+                    f'{score_name}.{method}.score.ann.csv'
+                self.score_ann_df.to_csv(self.score_ann_file, index=False)
+
                 self.score_df.to_csv(self.score_file)
                 self.plot_cmds.append(
                     snpStats.score_plot(self.score_file, method))
@@ -292,6 +330,7 @@ class SNPscore:
                 self.alt_freq()
             self.snp_filter()
         self.make_windows()
+        self.load_snp_ann()
         self.snp_score()
         self.plot()
         logger.info('all done ...')
