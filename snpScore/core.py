@@ -230,7 +230,7 @@ class SNPscore:
         self.windows_files = [self.snp_num_window_file]
 
     def load_snp_ann(self):
-        logger.info('Loding snp annotation...')
+        logger.info('Loading snp annotation...')
         self.snp_ann_df = pd.read_pickle(self.vcf_ann_file)  
 
     def annotate_snp_window(self):
@@ -282,7 +282,7 @@ class SNPscore:
             for method in self.methods_list:
                 window_file_name = window_file.name
                 logger.info(
-                    'calculating snp score using {window} by {method}...',
+                    'Calculating snp score using {window} by {method}...',
                     window=window_file_name,
                     method=method)
                 if self.group_label in window_file.stem:
@@ -306,7 +306,7 @@ class SNPscore:
                     snpStats.score_plot(self.score_file, method))
 
     def plot(self):
-        logger.info('ploting ...')
+        logger.info('Ploting ...')
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         self.plot_cmds.append(snpStats.score_plot(
             self.grp_alt_freq_file, 'density'))
@@ -343,4 +343,4 @@ class SNPscore:
         self.load_snp_ann()
         self.snp_score()
         self.plot()
-        logger.info('all done ...')
+        logger.info('The End.')
