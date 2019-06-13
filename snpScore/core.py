@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from pathlib import Path, PurePath
+from functools import reduce
 from collections import OrderedDict
 from asyncio.subprocess import PIPE, STDOUT
 from . import snpStats, snpAnn
@@ -182,7 +183,9 @@ class SNPscore:
             for table_i in self.vcf_table_file_list
         ]
         logger.info('Concatinating tables...')
-        self.snp_stats_df = pd.concat(self.snp_stats_dfs, sort=False, axis=1)
+        self.snp_stats_df = reduce(lambda x, y: 
+            pd.merge(x, y, on = ['Chr', 'Pos', 'Alt']), 
+            self.snp_stats_dfs)
         self.snp_stats_df.fillna(0, inplace=True)
 
     def group_stats(self):
