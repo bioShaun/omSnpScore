@@ -126,14 +126,28 @@ def df2list(df):
     return df_list
 
 
+def printdf(df):
+    col_str = [str(col_i) for col_i in df.columns]
+    print('\t'.join(col_str))
+    for index_i in df.index:
+        line_i = [str(col_i) for col_i in df.loc[index_i]]
+        print('\t'.join(line_i))
+
+
 def check_df(df, item='SNP'):
     if df.empty:
         logger.warning('{} Not Found!'.format(item))
         sys.exit(1)
 
 
+def init_logger(logger_file):
+    if logger_file:
+        logger.add(logger_file) 
+        logger.remove(0)
+
+
 def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt='table'):
+         group_labels, outfmt='table', logger_file=None):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     # step1 make selected gene/region bedfile
@@ -208,13 +222,11 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
     check_df(flat_target_snp_ann_freq_df, item='Target SNP in samples')
     flat_target_snp_ann_freq_df.sort_values(['#CHROM', 'POS'], inplace=True)
     if outfmt == 'string':
-        flat_target_snp_ann_freq_str = flat_target_snp_ann_freq_df.to_string(index=False)
-        print(flat_target_snp_ann_freq_str)
+        printdf(flat_target_snp_ann_freq_df)
     else:
         if not flat_target_snp_ann_freq_df.empty:
             target_region_snp_inf_file = outdir / 'target_region_snp_inf.txt'
             flat_target_snp_ann_freq_df.to_csv(target_region_snp_inf_file,
-                                           sep='\t',
                                            index=False)
         else:
             logger.warning('No snp was covered by reads in target region.')
