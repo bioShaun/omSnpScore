@@ -126,6 +126,12 @@ def df2list(df):
     return df_list
 
 
+def check_df(df, item='SNP'):
+    if df.empty:
+        logger.warning('{} Not Found!'.format(item))
+        sys.exit(1)
+
+
 def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
          group_labels, outfmt='table'):
     outdir = Path(outdir)
@@ -145,6 +151,7 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
     snp_bed_file = snp_ann_dir / 'snp.ann.table.bed'
     logger.info('Finding target region snp...')
     target_snp_df = find_target_region_snp(snp_bed_file, target_region_bed)
+    check_df(target_snp_df, item='Target SNP')
 
     # step3 extract snp annotation
     logger.info('Loading snp ann db...')
@@ -170,6 +177,7 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
         logger.info('Filtering snp annotation...')
         mask = flat_target_snp_ann_df.Gene.isin(gene_list)
         flat_target_snp_ann_df = flat_target_snp_ann_df[mask]
+        check_df(flat_target_snp_ann_df, item='Target Gene SNP')
     target_snp_loc_df = flat_target_snp_ann_df.loc[:, ['#CHROM', 'POS', 'ALT'
                                                        ]].drop_duplicates()
     target_snp_index = target_snp_loc_df.set_index(['#CHROM', 'POS',
@@ -197,10 +205,11 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
     freq_df.columns.name = ''
     freq_df = freq_df.reset_index()
     flat_target_snp_ann_freq_df = flat_target_snp_ann_df.merge(freq_df)
+    check_df(flat_target_snp_ann_freq_df, item='Target SNP in samples')
     flat_target_snp_ann_freq_df.sort_values(['#CHROM', 'POS'], inplace=True)
-    if outfmt == 'json':
-        flat_target_snp_ann_freq_list = df2list(flat_target_snp_ann_freq_df)
-        print(flat_target_snp_ann_freq_list)
+    if outfmt == 'string':
+        flat_target_snp_ann_freq_str = flat_target_snp_ann_freq_df.to_string(index=False)
+        print(flat_target_snp_ann_freq_str)
     else:
         if not flat_target_snp_ann_freq_df.empty:
             target_region_snp_inf_file = outdir / 'target_region_snp_inf.txt'

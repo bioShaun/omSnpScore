@@ -35,10 +35,14 @@ from snpScore import snpAnn
               type=click.STRING,
               help='show snp information on provided position.',
               default=None)
+@click.option('--outfmt',
+              type=click.STRING,
+              help='results format [table/string].',
+              default='table')
 def main(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels):
+         group_labels, outfmt):
     snpAnn.snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt='table')
+         group_labels, outfmt=outfmt)
 
 if __name__ == "__main__":
     main()

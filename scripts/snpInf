@@ -48,7 +48,7 @@ def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
         if group_names[0] == 'not_a_group_id':
             group_labels = ''
     snpAnn.snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt='json')
+         group_labels, outfmt='string')
 
 
 if __name__ == "__main__":
