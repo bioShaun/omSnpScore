@@ -30,11 +30,11 @@ from snpScore import core, snpAnn
 def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
     # step0 extract parameters
     parameters_obj = json.loads(parameters)
-    gene_list = parameters_obj.get('gene_id')
+    gene_list = parameters_obj.get('gene_id', '')
     genes = ','.join(gene_list)
-    chrom = parameters_obj.get('chrom')
-    chrom_start = parameters_obj.get('chrom_start')
-    chrom_end = parameters_obj.get('chrom_end')
+    chrom = parameters_obj.get('chrom', '')
+    chrom_start = parameters_obj.get('chrom_start', '')
+    chrom_end = parameters_obj.get('chrom_end', '')
     if chrom:
         position = f'{chrom}:{chrom_start}-{chrom_end}'
     else:
