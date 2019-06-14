@@ -148,6 +148,7 @@ def init_logger(logger_file):
 
 def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
          group_labels, outfmt='table', logger_file=None):
+    init_logger(logger_file)
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     # step1 make selected gene/region bedfile

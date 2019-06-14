@@ -27,7 +27,11 @@ from snpScore import core, snpAnn
               type=click.Path(),
               help='output directory.',
               required=True)
-def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
+@click.option('--logger_file',
+              type=click.Path(dir_okay=False),
+              help='logger file Path.',
+              default=None)          
+def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters, logger_file):
     # step0 extract parameters
     parameters_obj = json.loads(parameters)
     gene_list = parameters_obj.get('gene_id', '')
@@ -48,7 +52,7 @@ def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters):
         if group_names[0] == 'not_a_group_id':
             group_labels = ''
     snpAnn.snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt='string')
+         group_labels, outfmt='string', logger_file=logger_file)
 
 
 if __name__ == "__main__":
