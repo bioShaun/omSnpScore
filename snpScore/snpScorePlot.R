@@ -109,7 +109,7 @@ if (plot_type == 'density') {
 } else {
   var_table_df$Start <- var_table_df$Start + 1
   var_table_df$SNP <- paste(var_table_df$Chrom, var_table_df$Start, sep = ':')
-  var_table_df$Chrom <-  str_replace(var_table_df$Chrom, 'chr', '')
+  var_table_df$Chrom <- str_remove(var_table_df$Chrom, fixed('chr', ignore_case = T))
   plot_data <- var_table_df[, c('SNP', 'Chrom', 'Start', 'snp_score')]
   omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL,
              chr.den.col=NULL,file="jpg",memo="test",dpi=300,ylab = "Score",
