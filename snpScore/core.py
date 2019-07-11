@@ -10,7 +10,6 @@ from collections import OrderedDict
 from asyncio.subprocess import PIPE, STDOUT
 from . import snpStats, snpAnn
 
-
 DATA_DIR = PurePath(pkg_resources.resource_filename('snpScore', 'data'))
 CHR_SIZE = DATA_DIR / 'chr.size'
 SEMA = asyncio.Semaphore(20)
@@ -66,7 +65,6 @@ def alt_ref_cut(freq):
 
 
 class SNPscore:
-
     def __init__(self,
                  vcf_table_files,
                  vcf_ann_file,
@@ -98,8 +96,7 @@ class SNPscore:
         self.snp_number_step = default_value(snp_number_step, 5)
         self.genome_window = default_value(genome_window, 1000000)
         self.genome_step = default_value(genome_step, 500000)
-        methods = default_value(
-            methods, 'var,snp_index')
+        methods = default_value(methods, 'var,snp_index')
         self.methods_list = methods.split(',')
         self.mutant_alt_exp = mutant_alt_exp
         self.wild_alt_exp = wild_alt_exp
@@ -119,12 +116,11 @@ class SNPscore:
             format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}")
 
     def check_freq(self):
-        freq_accordance(
-            self.mutant_alt_exp,
-            self.wild_alt_exp,
-            message=('Mutant and Wild alt freqency direction '
-                     'should not consistent.'),
-            equal=False)
+        freq_accordance(self.mutant_alt_exp,
+                        self.wild_alt_exp,
+                        message=('Mutant and Wild alt freqency direction '
+                                 'should not consistent.'),
+                        equal=False)
         freq_accordance(
             self.mutant_alt_exp,
             self.mutant_parent_alt_exp,
@@ -136,25 +132,20 @@ class SNPscore:
 
     def make_freq_dict(self):
         alt_freq_list = [
-            self.mutant_alt_exp,
-            self.wild_alt_exp,
-            self.mutant_parent_alt_exp,
-            self.wild_parent_alt_exp,
-            self.background_alt_exp]
+            self.mutant_alt_exp, self.wild_alt_exp, self.mutant_parent_alt_exp,
+            self.wild_parent_alt_exp, self.background_alt_exp
+        ]
         for n, snp_group_i in enumerate(snpStats.SnpGroup.__members__.items()):
             name, member = snp_group_i
             ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n])
-            self.freq_dict.update({
-                member.value: [ref_cut, alt_cut]
-            })
+            self.freq_dict.update({member.value: [ref_cut, alt_cut]})
         if self.mutant_alt_exp and self.wild_alt_exp:
             self.methods_list.extend(['est_mut_alt', 'est_mut_ref'])
 
     def check_groups(self):
-        group_pairs = [[snpStats.SnpGroup.mut.value,
-                        snpStats.SnpGroup.wild.value],
-                       [snpStats.SnpGroup.mut_pa.value],
-                       [snpStats.SnpGroup.wild_pa.value],
+        group_pairs = [[
+            snpStats.SnpGroup.mut.value, snpStats.SnpGroup.wild.value
+        ], [snpStats.SnpGroup.mut_pa.value], [snpStats.SnpGroup.wild_pa.value],
                        [snpStats.SnpGroup.bg.value]]
         group_label_set = set(self.group_label_list)
         group_out_label = []
@@ -171,12 +162,14 @@ class SNPscore:
                 else:
                     pass
         for group_i in self.group_order:
-            if (self.freq_dict[group_i][0] is None or
-                    self.freq_dict[group_i][1] is None):
+            if (self.freq_dict[group_i][0] is None
+                    or self.freq_dict[group_i][1] is None):
                 sys.exit(f'{group_i} frequency not spcified!')
             else:
-                label_group = [str(each) for each in self.freq_dict[group_i]
-                               if not np.isinf(each)]
+                label_group = [
+                    str(each) for each in self.freq_dict[group_i]
+                    if not np.isinf(each)
+                ]
                 group_out_label.append(group_i)
                 group_out_label.extend(label_group)
         self.group_label = '_'.join(group_out_label)
@@ -184,9 +177,7 @@ class SNPscore:
     def load_stats(self):
         logger.info('Loading tables...')
         self.snp_stats_dfs = [
-            snpStats.load_hd5(
-                table_i)
-            for table_i in self.vcf_table_file_list
+            snpStats.load_hd5(table_i) for table_i in self.vcf_table_file_list
         ]
         logger.info('Concatinating tables...')
         self.snp_stats_df = reduce(
@@ -205,14 +196,13 @@ class SNPscore:
 
     def alt_freq(self):
         logger.info('Filtering allele depth...')
-        self.mutant_wild_group = [
-            MUT_NAME, WILD_NAME]
-        dep_passed_snp = self.grp_dep_df.loc[
-            :, self.mutant_wild_group].min(1) >= self.min_depth
+        self.mutant_wild_group = [MUT_NAME, WILD_NAME]
+        dep_passed_snp = self.grp_dep_df.loc[:, self.mutant_wild_group].min(
+            1) >= self.min_depth
         self.passed_grp_dep_df = self.grp_dep_df[dep_passed_snp]
         self.passed_grp_alt_df = self.grp_alt_df[dep_passed_snp]
-        self.passed_grp_dep_df.applymap(
-            lambda x: x if x >= self.min_depth else np.nan)
+        self.passed_grp_dep_df.applymap(lambda x: x
+                                        if x >= self.min_depth else np.nan)
         logger.info('Calculating alt allele freq...')
         self.grp_alt_freq_df = self.passed_grp_alt_df / self.passed_grp_dep_df
         self.grp_alt_freq_df = self.grp_alt_freq_df.loc[:, self.group_order]
@@ -229,13 +219,11 @@ class SNPscore:
     def make_windows(self):
         logger.info(
             'Making snp number slidewindow bed file windows {w} step {s}...',
-            w=self.snp_number_window, s=self.snp_number_step)
+            w=self.snp_number_window,
+            s=self.snp_number_step)
         self.snp_num_window_file = snpStats.make_snp_number_windows(
-            self.snp_alt_filter_df,
-            self.group_label,
-            self.snp_number_window,
-            self.snp_number_step,
-            self.outdir)
+            self.snp_alt_filter_df, self.group_label, self.snp_number_window,
+            self.snp_number_step, self.outdir)
         self.windows_files = [self.snp_num_window_file]
 
     def load_snp_ann(self):
@@ -247,15 +235,16 @@ class SNPscore:
         self.freq_dis_ann_df = self.freq_dis_df.merge(
             self.snp_ann_df,
             left_on=['Chrom', 'Pos', 'Alt'],
-            right_on=['#CHROM',	'POS', 'ALT'],
+            right_on=['#CHROM', 'POS', 'ALT'],
             how='left')
-        self.freq_dis_ann_df.drop(
-            ['#CHROM', 'POS', 'Alt'],
-            inplace=True, axis=1)
+        self.freq_dis_ann_df.drop(['#CHROM', 'POS', 'Alt'],
+                                  inplace=True,
+                                  axis=1)
         self.freq_dis_ann_df.rename(columns={
             MUT_NAME: f'{MUT_NAME}_alt_freq',
             WILD_NAME: f'{WILD_NAME}_alt_freq',
-        }, inplace=True)
+        },
+                                    inplace=True)
         return self.freq_dis_ann_df
 
     def annotate_snp_score(self):
@@ -269,16 +258,18 @@ class SNPscore:
             self.score_ann_df.INFO.map(snpAnn.extract_snpeff_anno))
         snpeff_anno_df = pd.DataFrame(snpeff_anno)
         snpeff_anno_df.columns = [
-            'Feature', 'Gene', 'Transcript',
-            'Variant_DNA_Level', 'Variant_Protein_Level']
-        self.score_ann_df = pd.concat(
-            [self.score_ann_df, snpeff_anno_df], axis=1)
+            'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+            'Variant_Protein_Level'
+        ]
+        self.score_ann_df = pd.concat([self.score_ann_df, snpeff_anno_df],
+                                      axis=1)
         self.score_ann_df.drop('INFO', axis=1, inplace=True)
         self.score_ann_df = snpAnn.split_dataframe_rows(
             self.score_ann_df,
             column_selectors=[
-                'Feature', 'Gene', 'Transcript',
-                'Variant_DNA_Level', 'Variant_Protein_Level'],
+                'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+                'Variant_Protein_Level'
+            ],
             row_delimiter='|')
         return self.score_ann_df
 
@@ -286,11 +277,8 @@ class SNPscore:
         for n, window_file in enumerate(self.windows_files):
             # group snp by window
             self.freq_dis_df = snpStats.snp_freq_by_window(
-                self.snp_alt_filter_df,
-                self.group_label,
-                window_file,
-                self.outdir
-            )
+                self.snp_alt_filter_df, self.group_label, window_file,
+                self.outdir)
             self.freq_dis_ann_df = self.annotate_snp_window()
 
             # calculating snp score using different methods
@@ -306,49 +294,58 @@ class SNPscore:
                     score_name = f'{self.group_label}.{window_file.stem}'
                 self.score_file = self.outdir / \
                     f'{score_name}.{method}.score.csv'
-                self.score_df = snpStats.cal_score(self.freq_dis_df,
-                                                   self.freq_dict,
-                                                   method=method)
-                if self.score_df is None:
-                    continue
-                self.score_df.to_csv(self.score_file)
-                self.score_ann_df = self.annotate_snp_score()
-                self.score_ann_file = self.outdir / \
-                    f'{score_name}.{method}.score.ann.csv'
-                self.score_ann_df.to_csv(self.score_ann_file, index=False)
+                if snpStats.is_valid_file(self.score_file):
+                    self.score_df = pd.read_csv(self.score_file)
+                else:
+                    self.score_df = snpStats.cal_score(self.freq_dis_df,
+                                                       self.freq_dict,
+                                                       method=method)
+
+                    if self.score_df is None:
+                        continue
+                    self.score_df.to_csv(self.score_file)
+                if not snpStats.is_valid_file(self.score_ann_file):
+                    self.score_ann_df = self.annotate_snp_score()
+                    self.score_ann_file = self.outdir / \
+                        f'{score_name}.{method}.score.ann.csv'
+                    self.score_ann_df.to_csv(self.score_ann_file, index=False)
 
                 self.plot_cmds.append(
                     snpStats.score_plot(self.score_file, method))
 
     def run_qtlseqr(self):
+        logger.info('Running QTLseqr...')
         if snpStats.is_valid_file(self.qtlseqr_input):
             if not self.grp_dep_df or not self.grp_alt_df:
                 self.load_stats()
                 self.group_stats()
             self.grp_ref_df = self.grp_dep_df - self.grp_alt_df
             self.grp_ref_df.columns = [
-                f'AD_REF.{sp_i}' for sp_i in self.ref_df.columns]
+                f'AD_REF.{sp_i}' for sp_i in self.ref_df.columns
+            ]
             self.grp_alt_df.columns = [
-                f'AD_ALT.{sp_i}' for sp_i in self.alt_df.columns]
+                f'AD_ALT.{sp_i}' for sp_i in self.alt_df.columns
+            ]
             self.grp_ref_df = self.grp_ref_df.astype('int')
-            self.qtlseqr_df = self.ref_df.merge(
-                self.alt_df, on=['Chr', 'Pos', 'Alt'])
+            self.qtlseqr_df = self.ref_df.merge(self.alt_df,
+                                                on=['Chr', 'Pos', 'Alt'])
             self.qtlseqr_df.index.names = ['CHROM', 'POS', 'ALT']
             self.qtlseqr_df = self.qtlseqr_df[self.qtlseqr_df.sum(1) > 0]
             self.qtlseqr_df = self.qtlseqr_df.reset_index()
             self.qtlseqr_df.to_csv(self.qtlseqr_input, index=False)
         out_prefix = self.outdir / 'QTLseqr'
-        snpStats.run_qtlseqr_cmd(
-            self.qtlseqr_input, h_bulk=MUT_NAME, l_bulk=WILD_NAME,
-            out_prefix=out_prefix)
+        snpStats.run_qtlseqr_cmd(self.qtlseqr_input,
+                                 h_bulk=MUT_NAME,
+                                 l_bulk=WILD_NAME,
+                                 out_prefix=out_prefix)
 
     def plot(self):
         logger.info('Ploting ...')
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
-        self.plot_cmds.append(snpStats.score_plot(
-            self.grp_alt_freq_file, 'density'))
-        self.plot_cmds.append(snpStats.score_plot(
-            self.snp_alt_filter_file, 'density'))
+        self.plot_cmds.append(
+            snpStats.score_plot(self.grp_alt_freq_file, 'density'))
+        self.plot_cmds.append(
+            snpStats.score_plot(self.snp_alt_filter_file, 'density'))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         if self.plot_cmds:
             loop = asyncio.get_event_loop()
@@ -366,8 +363,7 @@ class SNPscore:
         self.snp_alt_filter_file = self.outdir / \
             f'{self.group_label}.snp.freq.csv'
         if snpStats.is_valid_file(self.snp_alt_filter_file):
-            self.snp_alt_filter_df = pd.read_csv(
-                self.snp_alt_filter_file)
+            self.snp_alt_filter_df = pd.read_csv(self.snp_alt_filter_file)
         else:
             self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
             if snpStats.is_valid_file(self.grp_alt_freq_file):
