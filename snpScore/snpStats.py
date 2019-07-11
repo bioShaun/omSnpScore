@@ -11,6 +11,7 @@ from pathlib import PurePath, Path
 
 script_dir = Path(__file__).parent
 SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
+QTLSEQR_PLOT = script_dir / 'run_qtlseqr.R'
 OFFSET = 1e-05
 GROUPS = ('mutant', 'wild', 'mutant_parent', 'wild_parent', 'background')
 
@@ -223,8 +224,8 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
     varscore_size_df = stats_df.groupby(['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
     if method == 'var':
-        varscore_df = stats_df.groupby(['Chrom', 'Start',
-                                            'End']).agg(lambda x: np.var(x))
+        varscore_df = stats_df.groupby(
+            ['Chrom', 'Start', 'End']).agg(lambda x: np.var(x))
     elif 'est' in method:
         stats_df = stats_df.set_index(['Chrom', 'Start', 'End'])
         alt_freq_df = stats_df.copy()
@@ -240,8 +241,8 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
             ['Chrom', 'Start',
              'End']).agg(lambda x: np.average(np.power(x, 2)))
     elif method == 'snp_index':
-        varscore_df = stats_df.groupby(['Chrom', 'Start',
-                                            'End']).agg('mean')
+        varscore_df = stats_df.groupby(
+            ['Chrom', 'Start', 'End']).agg('mean')
     else:
         sys.exit('Wrong analysis method.')
     varscore_df = varscore_df[mask]
@@ -277,3 +278,12 @@ def score_plot(score_file, method):
         return cmd
     else:
         None
+
+
+def run_qtlseqr_cmd(qtlseqr_input, h_bulk, l_bulk, out_prefix):
+    cmd_line = (f'Rscript {QTLSEQR_PLOT} '
+        f'--input {qtlseqr_input} '
+        f'--high_bulk {h_bulk} '
+        f'--low_bulk {l_bulk} '
+        f'--out_prefix {out_prefix}')
+    delegator.run(cmd_line)

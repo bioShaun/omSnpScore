@@ -108,6 +108,7 @@ class SNPscore:
         self.background_alt_exp = background_alt_exp
         self.freq_dict = OrderedDict()
         self.plot_cmds = []
+        self.group_sample_dict = dict()
 
     def init_logger(self):
         logfile = self.outdir / 'log.txt'
@@ -317,6 +318,25 @@ class SNPscore:
                 self.plot_cmds.append(
                     snpStats.score_plot(self.score_file, method))
 
+    def run_qtlseqr(self):
+        if snpStats.is_valid_file(self.qtlseqr_input):
+            self.grp_ref_df = self.grp_dep_df - self.grp_alt_df
+            self.grp_ref_df.columns = [
+                f'AD_REF.{sp_i}' for sp_i in self.ref_df.columns]
+            self.grp_alt_df.columns = [
+                f'AD_ALT.{sp_i}' for sp_i in self.alt_df.columns]
+            self.grp_ref_df = self.grp_ref_df.astype('int')
+            self.qtlseqr_df = self.ref_df.merge(
+                self.alt_df, on=['Chr', 'Pos', 'Alt'])
+            self.qtlseqr_df.index.names = ['CHROM', 'POS', 'ALT']
+            self.qtlseqr_df = self.qtlseqr_df[self.qtlseqr_df.sum(1) > 0]
+            self.qtlseqr_df = self.qtlseqr_df.reset_index()
+            self.qtlseqr_df.to_csv(self.qtlseqr_input, index=False)
+        out_prefix = self.outdir / 'QTLseqr'
+        snpStats.run_qtlseqr_cmd(
+            self.qtlseqr_input, h_bulk=MUT_NAME, l_bulk=WILD_NAME,
+            out_prefix=out_prefix)
+
     def plot(self):
         logger.info('Ploting ...')
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
@@ -337,6 +357,7 @@ class SNPscore:
         self.check_freq()
         self.make_freq_dict()
         self.check_groups()
+        self.qtlseqr_input = self.outdir / 'qtlseqr.csv'
         self.snp_alt_filter_file = self.outdir / \
             f'{self.group_label}.snp.freq.csv'
         if snpStats.is_valid_file(self.snp_alt_filter_file):
@@ -354,5 +375,6 @@ class SNPscore:
         self.make_windows()
         self.load_snp_ann()
         self.snp_score()
+        self.run_qtlseqr()
         self.plot()
         logger.info('The End.')
