@@ -109,6 +109,8 @@ class SNPscore:
         self.freq_dict = OrderedDict()
         self.plot_cmds = []
         self.group_sample_dict = dict()
+        self.grp_alt_df = None
+        self.grp_dep_df = None
 
     def init_logger(self):
         logfile = self.outdir / 'log.txt'
@@ -320,6 +322,9 @@ class SNPscore:
 
     def run_qtlseqr(self):
         if snpStats.is_valid_file(self.qtlseqr_input):
+            if not self.grp_dep_df or not self.grp_alt_df:
+                self.load_stats()
+                self.group_stats()
             self.grp_ref_df = self.grp_dep_df - self.grp_alt_df
             self.grp_ref_df.columns = [
                 f'AD_REF.{sp_i}' for sp_i in self.ref_df.columns]
