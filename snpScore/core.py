@@ -18,6 +18,9 @@ SNP_FREQ_BIAS = 0.1
 ALT_FREQ = np.round(2 / 3 - SNP_FREQ_BIAS, 2)
 REF_FREQ = np.round(1 / 3 + SNP_FREQ_BIAS, 2)
 
+MUT_NAME = snpStats.SnpGroup.mut.value
+WILD_NAME = snpStats.SnpGroup.wild.value
+
 
 async def launch_cmd(cmd):
     with (await SEMA):
@@ -200,7 +203,7 @@ class SNPscore:
     def alt_freq(self):
         logger.info('Filtering allele depth...')
         self.mutant_wild_group = [
-            snpStats.SnpGroup.mut.value, snpStats.SnpGroup.wild.value]
+            MUT_NAME, WILD_NAME]
         dep_passed_snp = self.grp_dep_df.loc[
             :, self.mutant_wild_group].min(1) >= self.min_depth
         self.passed_grp_dep_df = self.grp_dep_df[dep_passed_snp]
@@ -247,8 +250,8 @@ class SNPscore:
             ['#CHROM', 'POS', 'Alt'],
             inplace=True, axis=1)
         self.freq_dis_ann_df.rename(columns={
-            snpStats.SnpGroup.mut.value: f'{snpStats.SnpGroup.mut.value}_alt_freq',
-            snpStats.SnpGroup.wild.value: f'{snpStats.SnpGroup.wild.value}_alt_freq',
+            MUT_NAME: f'{MUT_NAME}_alt_freq',
+            WILD_NAME: f'{WILD_NAME}_alt_freq',
         }, inplace=True)
         return self.freq_dis_ann_df
 
