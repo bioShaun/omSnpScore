@@ -304,10 +304,10 @@ class SNPscore:
                     if self.score_df is None:
                         continue
                     self.score_df.to_csv(self.score_file)
+                self.score_ann_file = self.outdir / \
+                    f'{score_name}.{method}.score.ann.csv'
                 if not snpStats.is_valid_file(self.score_ann_file):
                     self.score_ann_df = self.annotate_snp_score()
-                    self.score_ann_file = self.outdir / \
-                        f'{score_name}.{method}.score.ann.csv'
                     self.score_ann_df.to_csv(self.score_ann_file, index=False)
 
                 self.plot_cmds.append(
