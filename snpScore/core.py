@@ -183,8 +183,8 @@ class SNPscore:
             for table_i in self.vcf_table_file_list
         ]
         logger.info('Concatinating tables...')
-        self.snp_stats_df = reduce(lambda x, y: 
-            pd.merge(x, y, on = ['Chr', 'Pos', 'Alt']), 
+        self.snp_stats_df = reduce(
+            lambda x, y: pd.merge(x, y, on=['Chr', 'Pos', 'Alt']),
             self.snp_stats_dfs)
         self.snp_stats_df.fillna(0, inplace=True)
 
@@ -234,41 +234,47 @@ class SNPscore:
 
     def load_snp_ann(self):
         logger.info('Loading snp annotation...')
-        self.snp_ann_df = pd.read_pickle(self.vcf_ann_file)  
+        self.snp_ann_df = pd.read_pickle(self.vcf_ann_file)
 
     def annotate_snp_window(self):
         # add snp annotation to snp score region
-        self.freq_dis_ann_df = self.freq_dis_df.merge(self.snp_ann_df,
-                left_on=['Chrom', 'Pos', 'Alt'],
-                right_on=['#CHROM',	'POS', 'ALT'],
-                how='left')
+        self.freq_dis_ann_df = self.freq_dis_df.merge(
+            self.snp_ann_df,
+            left_on=['Chrom', 'Pos', 'Alt'],
+            right_on=['#CHROM',	'POS', 'ALT'],
+            how='left')
         self.freq_dis_ann_df.drop(
-                ['#CHROM', 'POS', 'Alt'],
-                inplace=True, axis=1)
+            ['#CHROM', 'POS', 'Alt'],
+            inplace=True, axis=1)
         self.freq_dis_ann_df.rename(columns={
-                snpStats.SnpGroup.mut.value: f'{snpStats.SnpGroup.mut.value}_alt_freq',
-                snpStats.SnpGroup.wild.value: f'{snpStats.SnpGroup.wild.value}_alt_freq',
-            }, inplace=True)
+            snpStats.SnpGroup.mut.value: f'{snpStats.SnpGroup.mut.value}_alt_freq',
+            snpStats.SnpGroup.wild.value: f'{snpStats.SnpGroup.wild.value}_alt_freq',
+        }, inplace=True)
         return self.freq_dis_ann_df
 
     def annotate_snp_score(self):
         # add snp annotation to snp score table and flat
-        self.score_ann_df = self.score_df.merge(self.freq_dis_ann_df,
+        self.score_ann_df = self.score_df.merge(
+            self.freq_dis_ann_df,
             left_on=['Chrom', 'Start', 'End'],
             right_on=['Chrom', 'Start', 'End'],
             how='left')
-        snpeff_anno = list(self.score_ann_df.INFO.map(snpAnn.extract_snpeff_anno))
+        snpeff_anno = list(
+            self.score_ann_df.INFO.map(snpAnn.extract_snpeff_anno))
         snpeff_anno_df = pd.DataFrame(snpeff_anno)
-        snpeff_anno_df.columns = ['Feature', 'Gene', 'Transcript', 
+        snpeff_anno_df.columns = [
+            'Feature', 'Gene', 'Transcript',
             'Variant_DNA_Level', 'Variant_Protein_Level']
-        self.score_ann_df = pd.concat([self.score_ann_df, snpeff_anno_df], axis=1)                
+        self.score_ann_df = pd.concat(
+            [self.score_ann_df, snpeff_anno_df], axis=1)
         self.score_ann_df.drop('INFO', axis=1, inplace=True)
         self.score_ann_df = snpAnn.split_dataframe_rows(
             self.score_ann_df,
-            column_selectors=['Feature', 'Gene', 'Transcript', 
+            column_selectors=[
+                'Feature', 'Gene', 'Transcript',
                 'Variant_DNA_Level', 'Variant_Protein_Level'],
             row_delimiter='|')
-        return self.score_ann_df 
+        return self.score_ann_df
 
     def snp_score(self):
         for n, window_file in enumerate(self.windows_files):
