@@ -1,4 +1,5 @@
 import sys
+import attr
 import asyncio
 import pkg_resources
 import numpy as np
@@ -64,50 +65,41 @@ def alt_ref_cut(freq):
     return ref_cut, alt_cut
 
 
+@attr.s(kw_only=True)
 class SNPscore:
-    def __init__(self,
-                 vcf_table_files,
-                 vcf_ann_file,
-                 group_labels,
-                 outdir,
-                 mutant_alt_exp=None,
-                 wild_alt_exp=None,
-                 mutant_parent_alt_exp=None,
-                 wild_parent_alt_exp=None,
-                 background_alt_exp=None,
-                 min_depth=5,
-                 snp_number_window=10,
-                 snp_number_step=5,
-                 genome_window=1000000,
-                 genome_step=500000,
-                 methods='var,snp_index'):
-        self.outdir = Path(outdir)
-        self.vcf_table_file_list = vcf_table_files.split(',')
-        self.vcf_ann_file = vcf_ann_file
-        self.group_label_list = group_labels.split(',')
+    vcf_table_files = attr.ib()
+    vcf_ann_file = attr.ib()
+    group_labels = attr.ib()
+    outdir = attr.ib(converter=Path)
+    min_depth = attr.ib(default=5)
+    snp_number_window = attr.ib(default=20)
+    snp_number_step = attr.ib(default=5)
+    mutant_alt_exp = attr.ib(default=None)
+    wild_alt_exp = attr.ib(default=None)
+    mutant_parent_alt_exp = attr.ib(default=None)
+    wild_parent_alt_exp = attr.ib(default=None)
+    background_alt_exp = attr.ib(default=None)
+    methods = attr.ib(default='var,snp_index')
+    qtlseqr_window = attr.ib(default=1e7)
+    qtlseqr_ref_freq = attr.ib(default=REF_FREQ)
+    pop_stru = attr.ib(default='RIL')
+
+    def __attrs_post_init__(self):
+        self.vcf_table_file_list = self.vcf_table_files.split(',')
+        self.methods_list = self.methods.split(',')
+        self.group_label_list = self.group_labels.split(',')
         self.group_order = []
-        self.mutant_wild_group = None
-        self.group_label = None
-        self.snp_stats_df = None
-        self.snp_group_stats_df = None
-        self.snp_alt_freq_df = None
-        self.min_depth = default_value(min_depth, 5)
-        self.snp_number_window = default_value(snp_number_window, 20)
-        self.snp_number_step = default_value(snp_number_step, 5)
-        self.genome_window = default_value(genome_window, 1000000)
-        self.genome_step = default_value(genome_step, 500000)
-        methods = default_value(methods, 'var,snp_index')
-        self.methods_list = methods.split(',')
-        self.mutant_alt_exp = mutant_alt_exp
-        self.wild_alt_exp = wild_alt_exp
-        self.mutant_parent_alt_exp = mutant_parent_alt_exp
-        self.wild_parent_alt_exp = wild_parent_alt_exp
-        self.background_alt_exp = background_alt_exp
         self.freq_dict = OrderedDict()
         self.plot_cmds = []
         self.group_sample_dict = dict()
         self.grp_alt_df = None
         self.grp_dep_df = None
+        self.snp_ann_df = None
+        self.mutant_wild_group = None
+        self.group_label = None
+        self.snp_stats_df = None
+        self.snp_group_stats_df = None
+        self.snp_alt_freq_df = None
 
     def init_logger(self):
         logfile = self.outdir / 'log.txt'
@@ -146,7 +138,7 @@ class SNPscore:
         group_pairs = [[
             snpStats.SnpGroup.mut.value, snpStats.SnpGroup.wild.value
         ], [snpStats.SnpGroup.mut_pa.value], [snpStats.SnpGroup.wild_pa.value],
-                       [snpStats.SnpGroup.bg.value]]
+            [snpStats.SnpGroup.bg.value]]
         group_label_set = set(self.group_label_list)
         group_out_label = []
         for n, group_pair_i in enumerate(group_pairs):
@@ -228,10 +220,12 @@ class SNPscore:
 
     def load_snp_ann(self):
         logger.info('Loading snp annotation...')
-        self.snp_ann_df = pd.read_pickle(self.vcf_ann_file)
+        if self.snp_ann_df is None:
+            self.snp_ann_df = pd.read_pickle(self.vcf_ann_file)
 
     def annotate_snp_window(self):
         # add snp annotation to snp score region
+        self.load_snp_ann()
         self.freq_dis_ann_df = self.freq_dis_df.merge(
             self.snp_ann_df,
             left_on=['Chrom', 'Pos', 'Alt'],
@@ -244,7 +238,7 @@ class SNPscore:
             MUT_NAME: f'{MUT_NAME}_alt_freq',
             WILD_NAME: f'{WILD_NAME}_alt_freq',
         },
-                                    inplace=True)
+            inplace=True)
         return self.freq_dis_ann_df
 
     def annotate_snp_score(self):
@@ -315,29 +309,34 @@ class SNPscore:
 
     def run_qtlseqr(self):
         logger.info('Running QTLseqr...')
-        if snpStats.is_valid_file(self.qtlseqr_input):
-            if not self.grp_dep_df or not self.grp_alt_df:
+        if not snpStats.is_valid_file(self.qtlseqr_input):
+            if (not self.grp_dep_df) or (not self.grp_alt_df):
                 self.load_stats()
                 self.group_stats()
             self.grp_ref_df = self.grp_dep_df - self.grp_alt_df
             self.grp_ref_df.columns = [
-                f'AD_REF.{sp_i}' for sp_i in self.ref_df.columns
+                f'AD_REF.{sp_i}' for sp_i in self.grp_ref_df.columns
             ]
             self.grp_alt_df.columns = [
-                f'AD_ALT.{sp_i}' for sp_i in self.alt_df.columns
+                f'AD_ALT.{sp_i}' for sp_i in self.grp_alt_df.columns
             ]
             self.grp_ref_df = self.grp_ref_df.astype('int')
-            self.qtlseqr_df = self.ref_df.merge(self.alt_df,
-                                                on=['Chr', 'Pos', 'Alt'])
+            self.qtlseqr_df = self.grp_ref_df.merge(self.grp_alt_df,
+                                                    on=['Chr', 'Pos', 'Alt'])
             self.qtlseqr_df.index.names = ['CHROM', 'POS', 'ALT']
             self.qtlseqr_df = self.qtlseqr_df[self.qtlseqr_df.sum(1) > 0]
             self.qtlseqr_df = self.qtlseqr_df.reset_index()
             self.qtlseqr_df.to_csv(self.qtlseqr_input, index=False)
         out_prefix = self.outdir / 'QTLseqr'
-        snpStats.run_qtlseqr_cmd(self.qtlseqr_input,
-                                 h_bulk=MUT_NAME,
-                                 l_bulk=WILD_NAME,
-                                 out_prefix=out_prefix)
+        cmd = snpStats.run_qtlseqr_cmd(self.qtlseqr_input,
+                                       h_bulk=MUT_NAME,
+                                       l_bulk=WILD_NAME,
+                                       out_prefix=out_prefix,
+                                       window=self.qtlseqr_window,
+                                       ref_freq=self.qtlseqr_ref_freq,
+                                       min_sample_dp=self.min_depth,
+                                       pop_stru=self.pop_stru)
+        self.plot_cmds.append(cmd)
 
     def plot(self):
         logger.info('Ploting ...')
@@ -374,7 +373,6 @@ class SNPscore:
                 self.alt_freq()
             self.snp_filter()
         self.make_windows()
-        self.load_snp_ann()
         self.snp_score()
         self.run_qtlseqr()
         self.plot()

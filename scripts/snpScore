@@ -46,21 +46,21 @@ def main(parameters,
         parameters_obj)
     outdir = outdir.resolve()
     full_outdir = outdir / outdir_suffix
-    snp_score_obj = core.SNPscore(vcf_table_files,
-                                  vcf_ann_file,
-                                  group_labels,
-                                  full_outdir,
-                                  parameters_obj.get('mutant_alt_exp'),
-                                  parameters_obj.get('wild_alt_exp'),
-                                  parameters_obj.get('mutant_parent_alt_exp'),
-                                  parameters_obj.get('wild_parent_alt_exp'),
-                                  parameters_obj.get('background_alt_exp'),
-                                  parameters_obj.get('min_depth'),
-                                  parameters_obj.get('snp_number_window'),
-                                  parameters_obj.get('snp_number_step'),
-                                  parameters_obj.get('genome_window'),
-                                  parameters_obj.get('genome_step'),
-                                  parameters_obj.get('methods'))
+    snp_score_inputs = {
+        attr_i.name for attr_i in core.SNPscore.__attrs_attrs__}
+    input_params = {
+        'group_labels': group_labels,
+        'vcf_table_files': vcf_table_files,
+        'outdir': full_outdir,
+        'vcf_ann_file': vcf_ann_file,
+    }
+
+    for param_i in parameters_obj:
+        if param_i in snp_score_inputs:
+            if parameters_obj[param_i]:
+                input_params.update({param_i: parameters_obj[param_i]})
+
+    snp_score_obj = core.SNPscore(**input_params)
     snp_score_obj.run
     print(full_outdir)
 

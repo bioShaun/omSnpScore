@@ -219,7 +219,8 @@ def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
 
 
 def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
-    stats_cols = ['Chrom', 'Start', 'End', SnpGroup.mut.value, SnpGroup.wild.value]
+    stats_cols = ['Chrom', 'Start', 'End',
+                  SnpGroup.mut.value, SnpGroup.wild.value]
     stats_df = intersect_df.loc[:, stats_cols]
     varscore_size_df = stats_df.groupby(['Chrom', 'Start', 'End']).size()
     mask = varscore_size_df >= min_snp_num
@@ -280,10 +281,15 @@ def score_plot(score_file, method):
         None
 
 
-def run_qtlseqr_cmd(qtlseqr_input, h_bulk, l_bulk, out_prefix):
+def run_qtlseqr_cmd(qtlseqr_input, h_bulk, l_bulk, out_prefix,
+                    window, ref_freq, min_sample_dp, pop_stru):
     cmd_line = (f'Rscript {QTLSEQR_PLOT} '
-        f'--input {qtlseqr_input} '
-        f'--high_bulk {h_bulk} '
-        f'--low_bulk {l_bulk} '
-        f'--out_prefix {out_prefix}')
-    delegator.run(cmd_line)
+                f'--input {qtlseqr_input} '
+                f'--high_bulk {h_bulk} '
+                f'--low_bulk {l_bulk} '
+                f'--out_prefix {out_prefix} '
+                f'--window {window} '
+                f'--ref_freq {ref_freq} '
+                f'--min_sample_dp {min_sample_dp} '
+                f'--pop_stru {pop_stru}')
+    return cmd_line
