@@ -25,10 +25,17 @@ def allele_depth(reads_inf, allele_num=2):
         return np.nan
 
 
-def table2hd5(table_file, sep='\t'):
-    table_df = pd.read_csv(table_file, sep=sep)
-    sample_name = table_df.columns[-1]
+def load_table_from_vcf(input_vcf, sample_id):
+    table_df = pd.read_csv(input_vcf, sep='\t', comment='#', header=None)
+    out_df = table_df.loc[:, [0, 1, 4, 9]]
+    out_df.columns = ['Chr', 'Pos', 'Alt', sample_id]
+    out_df.loc[:, sample_id] = [
+        snp_i.split(':')[1] for snp_i in out_df[sample_id]
+    ]
+    return out_df
 
+
+def reformat_table(table_df, sample_name):
     out_table_df = table_df.copy()
     out_table_df.loc[:, 'alt_count'] = table_df.loc[:, sample_name].map(
         alt_allele_num)
@@ -37,12 +44,29 @@ def table2hd5(table_file, sep='\t'):
     out_table_df.loc[:, 'sample_id'] = sample_name
     out_table_df = out_table_df.set_index(['Chr', 'Pos', 'Alt',
                                            'sample_id']).unstack('sample_id')
+    return out_table_df
 
+
+def table2pkl(table_file, sep='\t'):
+
+    table_df = pd.read_csv(table_file, sep=sep)
+    sample_name = table_df.columns[-1]
     table_file = PurePath(table_file)
-    table_file_name = table_file.stem
-    table_file_h5 = table_file.with_suffix('.h5')
-    out_table_df.to_hdf(table_file_h5, table_file_name)
+    table_file_pkl = table_file.with_suffix('.pkl')
+
+    out_table_df = reformat_table(table_df, sample_name)
+    out_table_df.to_pickle(table_file_pkl)
+
+
+def table2pkl_stdin(sample_id, table_file_pkl):
+    if not sys.stdin:
+        sys.exit('VCF stdin input is needed!')
+    table_df = load_table_from_vcf(sys.stdin, sample_id)
+    sample_name = table_df.columns[-1]
+
+    out_table_df = reformat_table(table_df, sample_name)
+    out_table_df.to_pickle(table_file_pkl)
 
 
 if __name__ == '__main__':
-    fire.Fire(table2hd5)
+    fire.Fire({'from_file': table2pkl, 'from_stdin': table2pkl_stdin})
