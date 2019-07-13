@@ -1,0 +1,1 @@
+from ._loading import tableFromVcf
