@@ -34,7 +34,12 @@ def load_table_from_vcf(input_vcf, sample_id):
 
 def table2hd5(table_file=None, sep='\t', sample_id=None):
     if table_file is None:
-        pass
+        if not sys.stdin:
+            sys.exit('VCF stdin input is needed!')
+        elif sample_id is None:
+            sys.exit('Sample id is needed!')
+        else:
+            table_df = load_table_from_vcf(sys.stdin, sample_id)
     else:
         table_df = pd.read_csv(table_file, sep=sep)
     sample_name = table_df.columns[-1]
