@@ -1,4 +1,13 @@
 import asyncio
+import shutil
+
+
+class AppNotFound(Exception):
+    pass
+
+
+class AmbigousSample(Exception):
+    pass
 
 
 async def async_sh_job(cmd, sema):
@@ -17,3 +26,8 @@ def async_batch_sh_jobs(cmd_list, thread=2):
         coro_list = [async_sh_job(cmd, semaphore) for cmd in cmd_list]
         loop.run_until_complete(asyncio.wait(coro_list))
         loop.close()
+
+
+def check_app(app_name):
+    if shutil.which(app_name) is None:
+        raise AppNotFound(app_name)
