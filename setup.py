@@ -20,9 +20,14 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     scripts=[
-        'scripts/snpScore', 'scripts/table2hd5', 'scripts/table2pkl',
-        'scripts/snpScore-cli', 'scripts/merge_vcf_feature', 'scripts/snpInf',
-        'scripts/snpInf-cli'
+        'scripts/snpScore',
+        'scripts/table2hd5',
+        'scripts/table2pkl',
+        'scripts/snpScore-cli',
+        'scripts/snpScore-cli-v2',
+        'scripts/merge_vcf_feature',
+        'scripts/snpInf',
+        'scripts/snpInf-cli',
     ],
     install_requires=[
         'click',

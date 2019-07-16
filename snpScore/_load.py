@@ -2,25 +2,13 @@ import gzip
 import attr
 import numpy as np
 import pandas as pd
-from enum import Enum
 from loguru import logger
 from pathlib import Path
 from functools import reduce
+from ._var import MUT_NAME, WILD_NAME
+from ._var import VCF_SAMPLE_INDEX
 from ._utils import async_batch_sh_jobs, check_app
-from ._utils import AmbigousSample
-
-
-class SnpGroup(Enum):
-    mut = 'mutant'
-    wild = 'wild'
-    mut_pa = 'mutant_parent'
-    wild_pa = 'wild_parent'
-    bg = 'background'
-
-
-MUT_NAME = SnpGroup.mut.value
-WILD_NAME = SnpGroup.wild.value
-VCF_SAMPLE_INDEX = 9
+from ._utils import SampleFileNotMatch
 
 
 @attr.s
@@ -47,7 +35,7 @@ class tableFromVcf:
         for sp_i in self.vcf_samples:
             sp_i_pkl = self.out_dir / f'{sp_i}.pkl'
             if sp_i_pkl.is_file():
-                logger.warning(f'{sp_i_pkl} exsits, omit transfer.')
+                logger.warning(f'{sp_i_pkl} exsits, omit sample [{sp_i}].')
             else:
                 table_samples.append(sp_i)
         return table_samples
@@ -100,8 +88,10 @@ class snpTable:
             if len(sp_dir) > 1:
                 sp_dir_str = ', '.join(sp_dir)
                 logger.error(f'{sp_i} in multiple directory: {sp_dir_str}')
+            elif len(sp_dir) == 0:
+                logger.error(f'{sp_i} not found.')
         if len(table_file_list) != len(self.samples):
-            raise AmbigousSample
+            raise SampleFileNotMatch
         return table_file_list
 
     @property
