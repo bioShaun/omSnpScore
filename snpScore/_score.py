@@ -212,6 +212,8 @@ class qtlSeqr:
 
     input_table = attr.ib(converter=Path)
     out_dir = attr.ib(converter=Path)
+    run_qtlseqr = attr.ib(factory=bool)
+    run_ed = attr.ib(factory=bool)
     window = attr.ib(default=1e7)
     ref_freq = attr.ib(default=REF_FREQ)
     pop_stru = attr.ib(default='RIL')
@@ -219,17 +221,20 @@ class qtlSeqr:
 
     @property
     def qtlseqr_job(self):
+        cmd_flag = ''
+        if self.run_qtlseqr:
+            cmd_flag += '--qtlseqr '
+        if self.run_ed:
+            cmd_flag += '--ed '
         logger.info('Generating QTLseqr command...')
-        outname = (f'qtlSeqr.{self.window}.{self.ref_freq}'
-                   f'.{self.min_sample_dp}.{self.pop_stru}')
-        out_prefix = self.out_dir / f'{outname}'
         cmd_line = (f'Rscript {QTLSEQR_PLOT} '
                     f'--input {self.input_table} '
                     f'--high_bulk {MUT_NAME} '
                     f'--low_bulk {WILD_NAME} '
-                    f'--out_prefix {out_prefix} '
+                    f'--out_dir {self.out_dir} '
                     f'--window {self.window} '
                     f'--ref_freq {self.ref_freq} '
                     f'--min_sample_dp {self.min_sample_dp} '
-                    f'--pop_stru {self.pop_stru}')
+                    f'--pop_stru {self.pop_stru} '
+                    f'{cmd_flag}')
         return cmd_line

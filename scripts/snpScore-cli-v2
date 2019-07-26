@@ -97,6 +97,7 @@ from snpScore import snpScoreBox, qtlSeqr
 @click.option('--snp_index', is_flag=True, help='Run snp index analysis.')
 @click.option('--est', is_flag=True, help='Run score estimate score analysis.')
 @click.option('--qtlseqr', is_flag=True, help='Run qtlseqr analysis.')
+@click.option('--ed', is_flag=True, help='Run snp ED analysis.')
 @click.option('--qtlseqr_window',
               help='snp window size for calculation.',
               default=1e7,
@@ -121,8 +122,8 @@ def main(vcf_file, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
          mutant_parent, wild_parent, background, mutant_alt_exp, wild_alt_exp,
          mutant_parent_alt_exp, wild_parent_alt_exp, background_alt_exp,
          min_depth, snp_number_window, snp_number_step, vcf_ann_file,
-         qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore, snp_index,
-         est):
+         qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore, snp_index, est,
+         ed):
     if vcf_file:
         if vcf_split_dir is None:
             vcf_split_dir = Path(outdir) / 'pickle'
@@ -143,13 +144,15 @@ def main(vcf_file, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
                              min_depth=min_depth)
 
     run_jobs = []
-    if qtlseqr:
+    if qtlseqr or ed:
         qtlseqr_obj = qtlSeqr(input_table=snp_table_obj.qtlseqr_snp_table,
                               window=qtlseqr_window,
                               ref_freq=ref_freq,
                               pop_stru=pop_stru,
                               min_sample_dp=min_depth,
-                              out_dir=outdir)
+                              out_dir=outdir,
+                              run_qtlseqr=qtlseqr,
+                              run_ed=ed)
         run_jobs.append(qtlseqr_obj.qtlseqr_job)
 
     snp_score_methods = []
@@ -175,6 +178,7 @@ def main(vcf_file, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
                                background_alt_exp=background_alt_exp,
                                vcf_ann_file=vcf_ann_file)
     run_jobs.extend(snpscore_obj.score_jobs)
+    print(run_jobs)
     logger.info('Launch snpScore jobs...')
     async_batch_sh_jobs(run_jobs, thread=thread)
     logger.info('The End.')
