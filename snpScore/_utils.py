@@ -82,10 +82,10 @@ def freq_accordance(freq_a, freq_b, message, equal=True):
         assert flag_a or flag_b, message
 
 
-def alt_ref_cut(freq):
+def alt_ref_cut(freq, ref_freq):
     if freq is None:
-        ref_cut = REF_FREQ
-        alt_cut = ALT_FREQ
+        ref_cut = ref_freq
+        alt_cut = 1 - ref_freq
     else:
         if freq > 0.5:
             ref_cut = -np.inf
@@ -282,3 +282,48 @@ def score_plot(score_file, method):
         return cmd
     else:
         return None
+
+
+def extract_snpeff_anno(anno_line):
+    anno_stats = []
+    fileds = (1, 3, 6, 9, 10)
+    gene_anno = anno_line.split(';')[0]
+    anno_line_stats = gene_anno.split(",")
+    for annStr in anno_line_stats:
+        annDetailArray = annStr.split("|")
+        filed_stats = []
+        for filled_i in fileds:
+            filed_stats.append(annDetailArray[filled_i])
+        anno_stats.append(filed_stats)
+    zip_anno_stats = list(map(lambda x: '|'.join(x), zip(*anno_stats)))
+    return zip_anno_stats
+
+
+def split_dataframe_rows(df, column_selectors, row_delimiter):
+    # we need to keep track of the ordering of the columns
+    def _split_list_to_rows(row, row_accumulator, column_selector,
+                            row_delimiter):
+        split_rows = {}
+        max_split = 0
+        for column_selector in column_selectors:
+            split_row = row[column_selector].split(row_delimiter)
+            split_rows[column_selector] = split_row
+            if len(split_row) > max_split:
+                max_split = len(split_row)
+
+        for i in range(max_split):
+            new_row = row.to_dict()
+            for column_selector in column_selectors:
+                try:
+                    new_row[column_selector] = split_rows[column_selector].pop(
+                        0)
+                except IndexError:
+                    new_row[column_selector] = ''
+            row_accumulator.append(new_row)
+
+    new_rows = []
+    df.apply(_split_list_to_rows,
+             axis=1,
+             args=(new_rows, column_selectors, row_delimiter))
+    new_df = pd.DataFrame(new_rows, columns=df.columns)
+    return new_df

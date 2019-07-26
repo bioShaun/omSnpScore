@@ -142,12 +142,19 @@ def check_df(df, item='SNP'):
 
 def init_logger(logger_file):
     if logger_file:
-        logger.add(logger_file) 
+        logger.add(logger_file)
         logger.remove(0)
 
 
-def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt='table', logger_file=None):
+def snp_ann_pipe(gene_bed,
+                 snp_ann_dir,
+                 outdir,
+                 genes,
+                 position,
+                 vcf_table_files,
+                 group_labels,
+                 outfmt='table',
+                 logger_file=None):
     init_logger(logger_file)
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -179,13 +186,20 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
     logger.info('Extracting snpEff annotationg...')
     snpeff_anno = list(target_snp_ann_df.INFO.map(extract_snpeff_anno))
     snpeff_anno_df = pd.DataFrame(snpeff_anno)
-    snpeff_anno_df.columns = ['Feature', 'Gene', 'Transcript', 'Variant_DNA_Level', 'Variant_Protein_Level']
+    snpeff_anno_df.columns = [
+        'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+        'Variant_Protein_Level'
+    ]
     target_snp_ann_df = pd.concat([target_snp_ann_df, snpeff_anno_df], axis=1)
     target_snp_ann_df.drop('INFO', axis=1, inplace=True)
-    flat_target_snp_ann_df = split_dataframe_rows(
-        target_snp_ann_df,
-        column_selectors=['Feature', 'Gene', 'Transcript', 'Variant_DNA_Level', 'Variant_Protein_Level'],
-        row_delimiter='|')
+    flat_target_snp_ann_df = split_dataframe_rows(target_snp_ann_df,
+                                                  column_selectors=[
+                                                      'Feature', 'Gene',
+                                                      'Transcript',
+                                                      'Variant_DNA_Level',
+                                                      'Variant_Protein_Level'
+                                                  ],
+                                                  row_delimiter='|')
 
     # step5 filter annotation
     if genes:
@@ -200,7 +214,8 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
 
     # step6 add snp freq
     logger.info('Loading input sample snp freq data...')
-    snp_freq_obj = core.SNPscore(vcf_table_files, snp_ann_file, group_labels, outdir)
+    snp_freq_obj = core.SNPscore(vcf_table_files, snp_ann_file, group_labels,
+                                 outdir)
     snp_freq_obj.load_stats()
     snp_freq_obj.snp_stats_df = snp_freq_obj.snp_stats_df.reindex(
         target_snp_index)
@@ -228,9 +243,8 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
         if not flat_target_snp_ann_freq_df.empty:
             target_region_snp_inf_file = outdir / 'target_region_snp_inf.txt'
             flat_target_snp_ann_freq_df.to_csv(target_region_snp_inf_file,
-                                           index=False)
+                                               index=False)
         else:
             logger.warning('No snp was covered by reads in target region.')
-
 
     logger.info('The End.')

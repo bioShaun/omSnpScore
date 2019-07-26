@@ -12,6 +12,8 @@ from ._utils import filter_snp
 from ._utils import make_snp_number_windows
 from ._utils import snp_freq_by_window
 from ._utils import cal_score, score_plot
+from ._utils import extract_snpeff_anno
+from ._utils import split_dataframe_rows
 
 
 @attr.s
@@ -23,6 +25,7 @@ class snpScoreBox:
     min_depth = attr.ib(default=5)
     snp_number_window = attr.ib(default=20)
     snp_number_step = attr.ib(default=5)
+    ref_freq = attr.ib(default=REF_FREQ)
     mutant_alt_exp = attr.ib(default=None)
     wild_alt_exp = attr.ib(default=None)
     mutant_parent_alt_exp = attr.ib(default=None)
@@ -36,6 +39,10 @@ class snpScoreBox:
         self._alt_filter_freq_df = None
         self._group_label = None
         self._alt_freq_dis_df = None
+        self._snp_ann_df = None
+        self._snp_window_ann_df = None
+        if self.ref_freq > 0.5:
+            self.ref_freq = 1 - self.ref_freq
 
     def check_freq(self):
         freq_accordance(self.mutant_alt_exp,
@@ -61,7 +68,7 @@ class snpScoreBox:
                 self.background_alt_exp
             ]
             for n, member in enumerate(self.grp_list):
-                ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n])
+                ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n], self.ref_freq)
                 self._freq_dict.update({member: [ref_cut, alt_cut]})
         return self._freq_dict
 
@@ -112,6 +119,61 @@ class snpScoreBox:
         return self._alt_freq_dis_df
 
     @property
+    def snp_ann_df(self):
+        if self._snp_ann_df is None:
+            logger.info('Loading snp annotation...')
+            self._snp_ann_df = pd.read_pickle(self.vcf_ann_file)
+        return self._snp_ann_df
+
+    @property
+    def snp_window_ann_df(self):
+        if self._snp_window_ann_df is None:
+            # add snp annotation to snp score region
+            logger.info('Generating snp window annotation...')
+            self._snp_window_ann_df = self.alt_freq_dis_df.merge(
+                self.snp_ann_df,
+                left_on=['Chrom', 'Pos', 'Alt'],
+                right_on=['#CHROM', 'POS', 'ALT'],
+                how='left')
+            self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
+                                         inplace=True,
+                                         axis=1)
+            self._snp_window_ann_df.rename(columns={
+                MUT_NAME: f'{MUT_NAME}_alt_freq',
+                WILD_NAME: f'{WILD_NAME}_alt_freq',
+            },
+                                           inplace=True)
+        return self._snp_window_ann_df
+
+    @property
+    def score_ann_df(self):
+        # add snp annotation to snp score table and flat
+        logger.info('Annotating snp score...')
+        self._score_ann_df = self.score_df.merge(
+            self.snp_window_ann_df,
+            left_on=['Chrom', 'Start', 'End'],
+            right_on=['Chrom', 'Start', 'End'],
+            how='left')
+        snpeff_anno = list(self._score_ann_df.INFO.map(extract_snpeff_anno))
+        snpeff_anno_df = pd.DataFrame(snpeff_anno)
+        snpeff_anno_df.columns = [
+            'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+            'Variant_Protein_Level'
+        ]
+        self._score_ann_df = pd.concat([self._score_ann_df, snpeff_anno_df],
+                                       axis=1)
+        self._score_ann_df.drop('INFO', axis=1, inplace=True)
+        self._score_ann_df = split_dataframe_rows(self._score_ann_df,
+                                                  column_selectors=[
+                                                      'Feature', 'Gene',
+                                                      'Transcript',
+                                                      'Variant_DNA_Level',
+                                                      'Variant_Protein_Level'
+                                                  ],
+                                                  row_delimiter='|')
+        return self._score_ann_df
+
+    @property
     def score_jobs(self):
         # calculating snp score using different methods
         for method in self.method_list:
@@ -127,83 +189,22 @@ class snpScoreBox:
                 self.score_df = cal_score(self.alt_freq_dis_df,
                                           self.freq_dict,
                                           method=method)
+                if self.score_df is None:
+                    continue
                 self.score_df.to_csv(self.score_file)
             else:
                 self.score_df = pd.read_csv(self.score_file)
             self.plot_cmds.append(score_plot(self.score_file, method))
+            self.score_ann_file = self.outdir / \
+                f'{score_name}.{method}.score.ann.csv'
+            if not self.score_ann_file.is_file():
+                if self.vcf_ann_file:
+                    self.score_ann_df.to_csv(self.score_ann_file, index=False)
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         return self.plot_cmds
-
-
-'''
-            if self.score_df is None:
-                continue
-            self.score_df.to_csv(self.score_file)
-            self.score_ann_file = self.outdir / \
-                f'{score_name}.{method}.score.ann.csv'
-            if not snpStats.is_valid_file(self.score_ann_file):
-                self.score_ann_df = self.annotate_snp_score()
-                self.score_ann_df.to_csv(self.score_ann_file, index=False)
-
-            self.plot_cmds.append(snpStats.score_plot(self.score_file, method))
-
-
-
-    def load_snp_ann(self):
-        logger.info('Loading snp annotation...')
-        if self.snp_ann_df is None:
-            self.snp_ann_df = pd.read_pickle(self.vcf_ann_file)
-
-    def annotate_snp_window(self):
-        # add snp annotation to snp score region
-        self.load_snp_ann()
-        self.freq_dis_ann_df = self.freq_dis_df.merge(
-            self.snp_ann_df,
-            left_on=['Chrom', 'Pos', 'Alt'],
-            right_on=['#CHROM', 'POS', 'ALT'],
-            how='left')
-        self.freq_dis_ann_df.drop(['#CHROM', 'POS', 'Alt'],
-                                  inplace=True,
-                                  axis=1)
-        self.freq_dis_ann_df.rename(columns={
-            MUT_NAME: f'{MUT_NAME}_alt_freq',
-            WILD_NAME: f'{WILD_NAME}_alt_freq',
-        },
-                                    inplace=True)
-        return self.freq_dis_ann_df
-
-    def annotate_snp_score(self):
-        # add snp annotation to snp score table and flat
-        self.score_ann_df = self.score_df.merge(
-            self.freq_dis_ann_df,
-            left_on=['Chrom', 'Start', 'End'],
-            right_on=['Chrom', 'Start', 'End'],
-            how='left')
-        snpeff_anno = list(
-            self.score_ann_df.INFO.map(snpAnn.extract_snpeff_anno))
-        snpeff_anno_df = pd.DataFrame(snpeff_anno)
-        snpeff_anno_df.columns = [
-            'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
-            'Variant_Protein_Level'
-        ]
-        self.score_ann_df = pd.concat([self.score_ann_df, snpeff_anno_df],
-                                      axis=1)
-        self.score_ann_df.drop('INFO', axis=1, inplace=True)
-        self.score_ann_df = snpAnn.split_dataframe_rows(
-            self.score_ann_df,
-            column_selectors=[
-                'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
-                'Variant_Protein_Level'
-            ],
-            row_delimiter='|')
-        return self.score_ann_df
-
-
-
-'''
 
 
 @attr.s
