@@ -4,11 +4,15 @@ import numpy as np
 import pandas as pd
 from io import StringIO
 from loguru import logger
+from decimal import Decimal, getcontext
 from functools import reduce
 from pybedtools import BedTool
 from ._var import GROUPS, REF_FREQ, ALT_FREQ, OFFSET
 from ._var import SnpGroup, SnpRep
 from ._var import SNP_SCORE_PLOT
+
+
+getcontext().prec = 3
 
 
 class AppNotFound(Exception):
@@ -85,7 +89,7 @@ def freq_accordance(freq_a, freq_b, message, equal=True):
 def alt_ref_cut(freq, ref_freq):
     if freq is None:
         ref_cut = ref_freq
-        alt_cut = 1 - ref_freq
+        alt_cut = float(Decimal(1) - Decimal(ref_freq))
     else:
         if freq > 0.5:
             ref_cut = -np.inf
