@@ -11,7 +11,6 @@ from ._var import GROUPS, REF_FREQ, ALT_FREQ, OFFSET
 from ._var import SnpGroup, SnpRep
 from ._var import SNP_SCORE_PLOT
 
-
 getcontext().prec = 3
 
 
@@ -86,10 +85,12 @@ def freq_accordance(freq_a, freq_b, message, equal=True):
         assert flag_a or flag_b, message
 
 
-def alt_ref_cut(freq, ref_freq):
+def alt_ref_cut(freq, is_ref=True):
     if freq is None:
-        ref_cut = ref_freq
-        alt_cut = float(Decimal(1) - Decimal(ref_freq))
+        return -np.inf, np.inf
+    if is_ref:
+        ref_cut = freq
+        alt_cut = float(Decimal(1) - Decimal(freq))
     else:
         if freq > 0.5:
             ref_cut = -np.inf

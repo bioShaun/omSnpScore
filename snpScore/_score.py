@@ -26,18 +26,19 @@ class snpScoreBox:
     snp_number_window = attr.ib(default=20)
     snp_number_step = attr.ib(default=5)
     ref_freq = attr.ib(default=REF_FREQ)
+    p_ref_freq = attr.ib(default=REF_FREQ)
+    background_ref_freq = attr.ib(default=REF_FREQ)
     mutant_alt_exp = attr.ib(default=None)
     wild_alt_exp = attr.ib(default=None)
-    mutant_parent_alt_exp = attr.ib(default=None)
-    wild_parent_alt_exp = attr.ib(default=None)
-    background_alt_exp = attr.ib(default=None)
     vcf_ann_file = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         self._freq_dict = OrderedDict()
+        self._exp_dict = OrderedDict()
         self.plot_cmds = []
         self._alt_filter_freq_df = None
         self._group_label = None
+        self._est_label = None
         self._alt_freq_dis_df = None
         self._snp_ann_df = None
         self._snp_window_ann_df = None
@@ -63,14 +64,24 @@ class snpScoreBox:
     def freq_dict(self):
         if not self._freq_dict:
             alt_freq_list = [
-                self.mutant_alt_exp, self.wild_alt_exp,
-                self.mutant_parent_alt_exp, self.wild_parent_alt_exp,
-                self.background_alt_exp
+                self.ref_freq, self.ref_freq, self.p_ref_freq, self.p_ref_freq,
+                self.background_ref_freq
             ]
             for n, member in enumerate(self.grp_list):
-                ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n], self.ref_freq)
+                ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n], is_ref=True)
                 self._freq_dict.update({member: [ref_cut, alt_cut]})
         return self._freq_dict
+
+    @property
+    def exp_dict(self):
+        if not self._exp_dict:
+            mut_ref, mut_alt = alt_ref_cut(self.mutant_alt_exp, is_ref=False)
+            wild_ref, wild_alt = alt_ref_cut(self.wild_alt_exp, is_ref=False)
+            self._exp_dict.update({
+                MUT_NAME: [mut_ref, mut_alt],
+                WILD_NAME: [wild_ref, wild_alt]
+            })
+        return self._exp_dict
 
     @property
     def group_label(self):
@@ -85,6 +96,22 @@ class snpScoreBox:
                 group_out_label.extend(label_group)
             self._group_label = '_'.join(group_out_label)
         return self._group_label
+
+    @property
+    def est_label(self):
+        if self._est_label is None:
+            group_out_label = []
+            for group_i in self.grp_list:
+                if group_i not in self.exp_dict:
+                    break
+                label_group = [
+                    str(each) for each in self.exp_dict[group_i]
+                    if not np.isinf(each)
+                ]
+                group_out_label.append(group_i)
+                group_out_label.extend(label_group)
+            self._est_label = '_'.join(group_out_label)
+        return self._est_label
 
     @property
     def alt_filter_freq_file(self):
@@ -179,15 +206,18 @@ class snpScoreBox:
         for method in self.method_list:
             window_file_name = self.snp_number_window_file.name
             score_name = self.snp_number_window_file.stem
+            method_name = method
+            if 'est' in method:
+                method_name = f'{method}.{self.est_label}'
             self.score_file = self.outdir / \
-                f'{score_name}.{method}.score.csv'
+                f'{score_name}.{method_name}.score.csv'
             if not self.score_file.is_file():
                 logger.info(
                     'Calculating snp score using {window} by {method}...',
                     window=window_file_name,
                     method=method)
                 self.score_df = cal_score(self.alt_freq_dis_df,
-                                          self.freq_dict,
+                                          self.exp_dict,
                                           method=method)
                 if self.score_df is None:
                     continue

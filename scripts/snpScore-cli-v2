@@ -61,24 +61,33 @@ from snpScore import snpScoreBox, qtlSeqr
               help=('Directory to save snp pickle file for each sample.'
                     'Default is outdir/pickle'),
               default=None)
+@click.option('--ref_freq',
+              help=('filter out SNPs with a '
+                    'Reference Allele Frequency '
+                    'less than refAlleleFreq '
+                    'and greater than 1 - refAlleleFreq.'),
+              default=0.3,
+              type=click.FLOAT)
+@click.option('--p_ref_freq',
+              help=('filter out parent SNPs with a '
+                    'Reference Allele Frequency '
+                    'less than refAlleleFreq '
+                    'and greater than 1 - refAlleleFreq.'),
+              default=0.3,
+              type=click.FLOAT)
+@click.option('--background_ref_freq',
+              help=('filter out background SNPs with a '
+                    'Reference Allele Frequency '
+                    'less than refAlleleFreq '
+                    'and greater than 1 - refAlleleFreq.'),
+              default=0.3,
+              type=click.FLOAT)
 @click.option('--mutant_alt_exp',
               help='mutant alt frequency expectation.',
               default=None,
               type=click.FLOAT)
 @click.option('--wild_alt_exp',
               help='wild alt frequency expectation.',
-              default=None,
-              type=click.FLOAT)
-@click.option('--mutant_parent_alt_exp',
-              help='mutant parent alt frequency expectation.',
-              default=None,
-              type=click.FLOAT)
-@click.option('--wild_parent_alt_exp',
-              help='wild parent alt frequency expectation.',
-              default=None,
-              type=click.FLOAT)
-@click.option('--background_alt_exp',
-              help='background alt frequency expectation.',
               default=None,
               type=click.FLOAT)
 @click.option('--min_depth',
@@ -106,13 +115,6 @@ from snpScore import snpScoreBox, qtlSeqr
               help='snp window size for calculation.',
               default=1e7,
               type=click.INT)
-@click.option('--ref_freq',
-              help=('filter out SNPs with a '
-                    'Reference Allele Frequency '
-                    'less than refAlleleFreq '
-                    'and greater than 1 - refAlleleFreq.'),
-              default=0.3,
-              type=click.FLOAT)
 @click.option('--pop_stru',
               help=('the population structure. '
                     'Defaults to "F2" and assumes "RIL" otherwise.'),
@@ -120,10 +122,9 @@ from snpScore import snpScoreBox, qtlSeqr
               type=click.STRING)
 def main(vcf_file, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
          mutant_parent, wild_parent, background, mutant_alt_exp, wild_alt_exp,
-         mutant_parent_alt_exp, wild_parent_alt_exp, background_alt_exp,
          min_depth, snp_number_window, snp_number_step, vcf_ann_file,
          qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore, snp_index, est,
-         ed):
+         ed, p_ref_freq, background_ref_freq):
     if vcf_file:
         if vcf_split_dir is None:
             vcf_split_dir = Path(outdir) / 'pickle'
@@ -171,11 +172,10 @@ def main(vcf_file, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
                                snp_number_window=snp_number_window,
                                snp_number_step=snp_number_step,
                                ref_freq=ref_freq,
+                               p_ref_freq=p_ref_freq,
+                               background_ref_freq=background_ref_freq,
                                mutant_alt_exp=mutant_alt_exp,
                                wild_alt_exp=wild_alt_exp,
-                               mutant_parent_alt_exp=mutant_parent_alt_exp,
-                               wild_parent_alt_exp=wild_parent_alt_exp,
-                               background_alt_exp=background_alt_exp,
                                vcf_ann_file=vcf_ann_file)
     run_jobs.extend(snpscore_obj.score_jobs)
     logger.info('Launch snpScore jobs...')
