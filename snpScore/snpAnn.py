@@ -200,7 +200,10 @@ def snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files
 
     # step6 add snp freq
     logger.info('Loading input sample snp freq data...')
-    snp_freq_obj = core.SNPscore(vcf_table_files, snp_ann_file, group_labels, outdir)
+    snp_freq_obj = core.SNPscore(vcf_table_files=vcf_table_files, 
+                                 vcf_ann_file=snp_ann_file, 
+                                 group_labels=group_labels, 
+                                 outdir=outdir)
     snp_freq_obj.load_stats()
     snp_freq_obj.snp_stats_df = snp_freq_obj.snp_stats_df.reindex(
         target_snp_index)
