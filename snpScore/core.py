@@ -101,12 +101,6 @@ class SNPscore:
         self.snp_group_stats_df = None
         self.snp_alt_freq_df = None
 
-    def init_logger(self):
-        logfile = self.outdir / 'log.txt'
-        logger.add(
-            logfile,
-            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}")
-
     def check_freq(self):
         freq_accordance(self.mutant_alt_exp,
                         self.wild_alt_exp,

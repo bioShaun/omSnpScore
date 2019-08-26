@@ -2,9 +2,7 @@
 
 from setuptools import setup, find_packages
 
-
 version = '1.0dev'
-
 
 msg = '''------------------------------
 Installing omSnpScore version {}
@@ -21,13 +19,16 @@ setup(
     license='MIT',
     packages=find_packages(),
     include_package_data=True,
-    scripts=['scripts/snpScore',
-             'scripts/table2hd5',
-             'scripts/table2pkl',
-             'scripts/snpScore-cli',
-             'scripts/merge_vcf_feature',
-             'scripts/snpInf', 
-             'scripts/snpInf-cli'],
+    scripts=[
+        'scripts/snpScore',
+        'scripts/table2hd5',
+        'scripts/table2pkl',
+        'scripts/snpScore-cli',
+        'scripts/snpScore-cli-v2',
+        'scripts/merge_vcf_feature',
+        'scripts/snpInf',
+        'scripts/snpInf-cli',
+    ],
     install_requires=[
         'click',
         'pandas',
@@ -36,9 +37,9 @@ setup(
         'pybedtools',
         'numpy',
         'tables',
+        'attrs',
     ],
 )
-
 
 msg = '''------------------------------
 omSnpScore installation complete!
