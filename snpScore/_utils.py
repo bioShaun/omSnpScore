@@ -22,6 +22,10 @@ class SampleFileNotMatch(Exception):
     pass
 
 
+class UnsupportedFormat(Exception):
+    pass
+
+
 class UnsupportedScoreMethod(Exception):
     pass
 
