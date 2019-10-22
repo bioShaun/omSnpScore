@@ -8,7 +8,7 @@ from functools import reduce
 from ._var import MUT_NAME, WILD_NAME
 from ._var import VCF_SAMPLE_INDEX
 from ._utils import async_batch_sh_jobs, check_app
-from ._utils import SampleFileNotMatch
+from ._utils import SampleFileNotMatch, UnsupportedFormat
 
 
 @attr.s
@@ -107,9 +107,13 @@ class snpTable:
             sp_dir = []
             for dir_i in self.table_dirs:
                 sp_i_pkl = Path(dir_i) / f'{sp_i}.pkl'
+                sp_i_h5 = Path(dir_i) / f'{sp_i}.h5'
                 if sp_i_pkl.is_file():
                     sp_dir.append(dir_i)
                     table_file_list.append(sp_i_pkl)
+                elif sp_i_h5.is_file():
+                    sp_dir.append(dir_i)
+                    table_file_list.append(sp_i_h5)
             if len(sp_dir) > 1:
                 sp_dir_str = ', '.join(sp_dir)
                 logger.error(f'{sp_i} in multiple directory: {sp_dir_str}')
@@ -123,9 +127,15 @@ class snpTable:
     def ad_df(self):
         if self._ad_df is None:
             logger.info('Loading tables...')
-            self.ad_dfs = [
-                pd.read_pickle(table_i) for table_i in self.snp_table_files
-            ]
+            self.ad_dfs = []
+            for table_i in self.snp_table_files:
+                if table_i.suffix == '.pkl':
+                    table_i_df = pd.read_pickle(table_i)
+                elif table_i.suffix == '.h5':
+                    table_i_df = pd.read_hdf(table_i)
+                else:
+                    raise UnsupportedFormat
+                self.ad_dfs.append(table_i_df)
             logger.info('Concatinating tables...')
             self._ad_df = reduce(
                 lambda x, y: pd.merge(x, y, on=['Chr', 'Pos', 'Alt']),
