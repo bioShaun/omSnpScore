@@ -4,6 +4,7 @@ import click
 from loguru import logger
 from pathlib import Path
 from snpScore import tableFromVcf, sample_and_group
+from snpScore import tableFromSelectTable
 from snpScore import snpTable, async_batch_sh_jobs
 from snpScore import snpScoreBox, qtlSeqr
 
@@ -12,6 +13,11 @@ from snpScore import snpScoreBox, qtlSeqr
 @click.option('--vcf_file',
               help=('vcf file path, can be more than one '
                     '[--vcf_file vcf1 --vcf_file vcf2]'),
+              type=click.Path(exists=True, dir_okay=False),
+              multiple=True)
+@click.option('--vcf_table',
+              help=('vcf table path, can be more than one '
+                    '[--vcf_table vcf1 --vcf_table vcf2]'),
               type=click.Path(exists=True, dir_okay=False),
               multiple=True)
 @click.option('--vcf_dir',
@@ -120,12 +126,13 @@ from snpScore import snpScoreBox, qtlSeqr
                     'Defaults to "F2" and assumes "RIL" otherwise.'),
               default='RIL',
               type=click.STRING)
-def main(vcf_file, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
+def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
          mutant_parent, wild_parent, background, mutant_alt_exp, wild_alt_exp,
          min_depth, snp_number_window, snp_number_step, vcf_ann_file,
          qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore, snp_index, est,
          ed, p_ref_freq, background_ref_freq):
-    if vcf_file:
+    if vcf_file or vcf_table:
+        vcf_dir = list(vcf_dir)
         if vcf_split_dir is None:
             vcf_split_dir = Path(outdir) / 'pickle'
         for vcf_i in vcf_file:
@@ -133,7 +140,12 @@ def main(vcf_file, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
                                       out_dir=vcf_split_dir,
                                       thread=thread)
             vcf2tb_obj.make_table
-            vcf_dir = list(vcf_dir)
+            vcf_dir.append(vcf_split_dir)
+        for st_i in vcf_table:
+            vcf2tb_obj = tableFromSelectTable(vcf=st_i,
+                                              out_dir=vcf_split_dir,
+                                              thread=thread)
+            vcf2tb_obj.make_table
             vcf_dir.append(vcf_split_dir)
 
     sample_list, group_list = sample_and_group(mutant, wild, mutant_parent,

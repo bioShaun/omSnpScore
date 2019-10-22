@@ -58,6 +58,31 @@ class tableFromVcf:
 
 
 @attr.s
+class tableFromSelectTable(tableFromVcf):
+
+    def __attrs_post_init__(self):
+        self.st_df = pd.read_csv(self.vcf, sep='\t')
+        self.pos_cols = list(self.st_df.columns[:3])
+
+    @property
+    def vcf_samples(self):
+        return self.st_df.columns[3:]
+
+    def _extract_from_vcf(self, sample_id):
+        check_app('table2pkl')
+        sample_cols = self.pos_cols[:]
+        sample_cols.append(sample_id)
+        sample_df = self.st_df.loc[:, sample_cols]
+        sample_df.columns = ['Chr', 'Pos', 'Alt', sample_id]
+        sample_df.loc[:, sample_id] = [str(each).replace(
+            '|', ',') for each in sample_df.loc[:, sample_id]]
+        sample_table = self.out_dir / f'{sample_id}.table'
+        sample_df.to_csv(sample_table, sep='\t', index=False)
+        cmd = f'table2pkl from_file --table_file {sample_table}'
+        return cmd
+
+
+@attr.s
 class snpTable:
 
     out_dir = attr.ib(converter=Path)

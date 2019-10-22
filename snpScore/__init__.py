@@ -1,4 +1,5 @@
 from ._load import tableFromVcf
+from ._load import tableFromSelectTable
 from ._load import snpTable
 from ._score import snpScoreBox
 from ._score import qtlSeqr
