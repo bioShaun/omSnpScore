@@ -8,7 +8,7 @@ from decimal import Decimal, getcontext
 from functools import reduce
 from pybedtools import BedTool
 from ._var import GROUPS, REF_FREQ, ALT_FREQ, OFFSET
-from ._var import SnpGroup, SnpRep
+from ._var import SnpGroup, SnpRep, SnpGroupFreq
 from ._var import SNP_SCORE_PLOT
 
 getcontext().prec = 3
@@ -125,12 +125,12 @@ def equal2parent(snp_rep_df, child, parent):
         return snp_rep_df
 
 
-def filter_snp(alt_freq_stat_df, freq_dict, filter_label, filter_freq_stats):
+def filter_snp(alt_freq_stat_df, freq_dict, filter_freq_stats):
     alt_rep_df = alt_freq_stat_df.copy()
-    for member in SnpGroup.__members__.values():
+    for member in SnpGroupFreq.__members__.values():
         if member.value not in alt_rep_df.columns:
             continue
-        ref_cut, alt_cut = freq_dict[member.value]
+        ref_cut, alt_cut = freq_dict[getattr(SnpGroup, member.name).value]
         alt_rep_df.loc[:, member.value] = [
             snpfreq2rep(alt_freq_i, alt_cut, ref_cut)
             for alt_freq_i in alt_rep_df.loc[:, member.value]
@@ -138,13 +138,13 @@ def filter_snp(alt_freq_stat_df, freq_dict, filter_label, filter_freq_stats):
     # step1 remove non ref/alt
     alt_rep_df.dropna(inplace=True)
     # step2 child equal to parent or parent unkown
-    alt_rep_df = equal2parent(alt_rep_df, SnpGroup.mut.value,
-                              SnpGroup.mut_pa.value)
-    alt_rep_df = equal2parent(alt_rep_df, SnpGroup.wild.value,
-                              SnpGroup.wild_pa.value)
+    alt_rep_df = equal2parent(alt_rep_df, SnpGroupFreq.mut.value,
+                              SnpGroupFreq.mut_pa.value)
+    alt_rep_df = equal2parent(alt_rep_df, SnpGroupFreq.wild.value,
+                              SnpGroupFreq.wild_pa.value)
     # step3 mutant not equal to wild
-    mask = alt_rep_df.loc[:, SnpGroup.mut.value] \
-        != alt_rep_df.loc[:, SnpGroup.wild.value]
+    mask = alt_rep_df.loc[:, SnpGroupFreq.mut.value] \
+        != alt_rep_df.loc[:, SnpGroupFreq.wild.value]
     alt_rep_df = alt_rep_df[mask]
     alt_freq_stat_filter_df = alt_freq_stat_df.loc[alt_rep_df.index]
     alt_freq_stat_filter_df.to_csv(filter_freq_stats, index=False)
@@ -184,7 +184,7 @@ def make_snp_number_windows(stat_df, group_label, window, step, outdir):
 
 
 def snp_freq_by_window(stat_df, group_label, window_file, outdir):
-    groups = [SnpGroup.mut.value, SnpGroup.wild.value]
+    groups = stat_df.columns[3:]
     alt_freq_stat_bed = outdir / f'{group_label}.snp.plot.bed'
     if not alt_freq_stat_bed.is_file():
         alt_freq_stat_df = stat_df.copy()
@@ -215,27 +215,28 @@ def snp_freq_by_window(stat_df, group_label, window_file, outdir):
 
 
 def log_varscore(row):
-    return np.power(-np.log10(reduce(lambda a, b: a * b, row)), 10)
+    score_s = np.power(-np.log10(reduce(lambda a, b: a * b, row)), 10)
+    return score_s.astype('int')
 
 
 def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
     if mut == 'alt':
-        mut_freq = freq_dict[SnpGroup.mut.value][1]
-        wild_freq = freq_dict[SnpGroup.wild.value][0]
+        mut_freq = freq_dict[SnpGroupFreq.mut.value][1]
+        wild_freq = freq_dict[SnpGroupFreq.wild.value][0]
     else:
-        mut_freq = freq_dict[SnpGroup.mut.value][0]
-        wild_freq = freq_dict[SnpGroup.wild.value][1]
+        mut_freq = freq_dict[SnpGroupFreq.mut.value][0]
+        wild_freq = freq_dict[SnpGroupFreq.wild.value][1]
     if np.isinf(mut_freq) or np.isinf(wild_freq):
         return None
     else:
-        intersect_df.loc[:, SnpGroup.mut.value] = mut_freq
-        intersect_df.loc[:, SnpGroup.wild.value] = wild_freq
+        intersect_df.loc[:, SnpGroupFreq.mut.value] = mut_freq
+        intersect_df.loc[:, SnpGroupFreq.wild.value] = wild_freq
         return intersect_df
 
 
 def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
     stats_cols = [
-        'Chrom', 'Start', 'End', SnpGroup.mut.value, SnpGroup.wild.value
+        'Chrom', 'Start', 'End', SnpGroupFreq.mut.value, SnpGroupFreq.wild.value
     ]
     stats_df = intersect_df.loc[:, stats_cols]
     varscore_size_df = stats_df.groupby(['Chrom', 'Start', 'End']).size()
@@ -271,6 +272,8 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
                                            if x >= OFFSET else OFFSET)
         varscore_df.loc[:, 'snp_score'] = varscore_df.apply(log_varscore,
                                                             axis=1)
+    varscore_df.drop([SnpGroupFreq.mut.value, SnpGroupFreq.wild.value],
+                     axis=1, inplace=True)
     return varscore_df
 
 
@@ -336,3 +339,12 @@ def split_dataframe_rows(df, column_selectors, row_delimiter):
              args=(new_rows, column_selectors, row_delimiter))
     new_df = pd.DataFrame(new_rows, columns=df.columns)
     return new_df
+
+
+def valid_grp(grp_list):
+    valid_grp_list = []
+    for n, snp_group_i in enumerate(SnpGroup.__members__.items()):
+        _, member = snp_group_i
+        if member.value in grp_list:
+            valid_grp_list.append(member.value)
+    return valid_grp_list

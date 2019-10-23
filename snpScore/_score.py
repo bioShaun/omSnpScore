@@ -1,3 +1,5 @@
+# TODO: score system involve background and parent
+
 import attr
 import numpy as np
 import pandas as pd
@@ -5,7 +7,7 @@ from loguru import logger
 from pathlib import Path
 from collections import OrderedDict
 from ._var import REF_FREQ, QTLSEQR_PLOT
-from ._var import MUT_NAME, WILD_NAME
+from ._var import SnpGroup, MUT_NAME, WILD_NAME
 from ._utils import freq_accordance
 from ._utils import alt_ref_cut
 from ._utils import filter_snp
@@ -14,6 +16,7 @@ from ._utils import snp_freq_by_window
 from ._utils import cal_score, score_plot
 from ._utils import extract_snpeff_anno
 from ._utils import split_dataframe_rows
+from ._utils import valid_grp
 
 
 @attr.s
@@ -42,6 +45,7 @@ class snpScoreBox:
         self._alt_freq_dis_df = None
         self._snp_ann_df = None
         self._snp_window_ann_df = None
+        self.valid_grp = valid_grp(self.grp_list)
         if self.ref_freq > 0.5:
             self.ref_freq = 1 - self.ref_freq
 
@@ -67,9 +71,10 @@ class snpScoreBox:
                 self.ref_freq, self.ref_freq, self.p_ref_freq, self.p_ref_freq,
                 self.background_ref_freq
             ]
-            for n, member in enumerate(self.grp_list):
+            for n, snp_group_i in enumerate(SnpGroup.__members__.items()):
+                _, member = snp_group_i
                 ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n], is_ref=True)
-                self._freq_dict.update({member: [ref_cut, alt_cut]})
+                self._freq_dict.update({member.value: [ref_cut, alt_cut]})
         return self._freq_dict
 
     @property
@@ -87,7 +92,7 @@ class snpScoreBox:
     def group_label(self):
         if self._group_label is None:
             group_out_label = []
-            for group_i in self.grp_list:
+            for group_i in self.valid_grp:
                 label_group = [
                     str(each) for each in self.freq_dict[group_i]
                     if not np.isinf(each)
@@ -126,7 +131,7 @@ class snpScoreBox:
             else:
                 logger.info('Filtering snp by freq...')
                 self._alt_filter_freq_df = filter_snp(
-                    self.alt_freq_df, self.freq_dict, self.group_label,
+                    self.alt_freq_df, self.freq_dict,
                     self.alt_filter_freq_file)
         return self._alt_filter_freq_df
 
@@ -169,7 +174,7 @@ class snpScoreBox:
                 MUT_NAME: f'{MUT_NAME}_alt_freq',
                 WILD_NAME: f'{WILD_NAME}_alt_freq',
             },
-                                           inplace=True)
+                inplace=True)
         return self._snp_window_ann_df
 
     @property
@@ -229,7 +234,8 @@ class snpScoreBox:
                 f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
                 if self.vcf_ann_file:
-                    self.score_ann_df.to_csv(self.score_ann_file, index=False)
+                    self.score_ann_df.to_csv(
+                        self.score_ann_file, index=False)
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))

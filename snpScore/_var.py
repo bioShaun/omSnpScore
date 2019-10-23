@@ -12,6 +12,14 @@ class SnpGroup(Enum):
     bg = 'background'
 
 
+class SnpGroupFreq(Enum):
+    mut = 'mutant.FREQ'
+    wild = 'wild.FREQ'
+    mut_pa = 'mutant_parent.FREQ'
+    wild_pa = 'wild_parent.FREQ'
+    bg = 'background.FREQ'
+
+
 class SnpRep(IntEnum):
     alt = 0
     ref = 1
