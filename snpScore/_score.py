@@ -161,20 +161,36 @@ class snpScoreBox:
     def snp_window_ann_df(self):
         if self._snp_window_ann_df is None:
             # add snp annotation to snp score region
-            logger.info('Generating snp window annotation...')
-            self._snp_window_ann_df = self.alt_freq_dis_df.merge(
-                self.snp_ann_df,
-                left_on=['Chrom', 'Pos', 'Alt'],
-                right_on=['#CHROM', 'POS', 'ALT'],
-                how='left')
-            self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
-                                         inplace=True,
-                                         axis=1)
-            self._snp_window_ann_df.rename(columns={
-                MUT_NAME: f'{MUT_NAME}_alt_freq',
-                WILD_NAME: f'{WILD_NAME}_alt_freq',
-            },
-                inplace=True)
+            if self.vcf_ann_file:
+                logger.info('Generating snp window annotation...')
+                self._snp_window_ann_df = self.alt_freq_dis_df.merge(
+                    self.snp_ann_df,
+                    left_on=['Chrom', 'Pos', 'Alt'],
+                    right_on=['#CHROM', 'POS', 'ALT'],
+                    how='left')
+                self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
+                                             inplace=True,
+                                             axis=1)
+                snpeff_anno = list(
+                    self._snp_window_ann_df.INFO.map(extract_snpeff_anno))
+                snpeff_anno_df = pd.DataFrame(snpeff_anno)
+                snpeff_anno_df.columns = [
+                    'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+                    'Variant_Protein_Level'
+                ]
+                self._snp_window_ann_df = pd.concat([self._snp_window_ann_df, snpeff_anno_df],
+                                                    axis=1)
+                self._snp_window_ann_df.drop('INFO', axis=1, inplace=True)
+                self._snp_window_ann_df = split_dataframe_rows(self._snp_window_ann_df,
+                                                               column_selectors=[
+                                                                   'Feature', 'Gene',
+                                                                   'Transcript',
+                                                                   'Variant_DNA_Level',
+                                                                   'Variant_Protein_Level'
+                                                               ],
+                                                               row_delimiter='|')
+            else:
+                self._snp_window_ann_df = self.alt_freq_dis_df
         return self._snp_window_ann_df
 
     @property
@@ -186,23 +202,6 @@ class snpScoreBox:
             left_on=['Chrom', 'Start', 'End'],
             right_on=['Chrom', 'Start', 'End'],
             how='left')
-        snpeff_anno = list(self._score_ann_df.INFO.map(extract_snpeff_anno))
-        snpeff_anno_df = pd.DataFrame(snpeff_anno)
-        snpeff_anno_df.columns = [
-            'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
-            'Variant_Protein_Level'
-        ]
-        self._score_ann_df = pd.concat([self._score_ann_df, snpeff_anno_df],
-                                       axis=1)
-        self._score_ann_df.drop('INFO', axis=1, inplace=True)
-        self._score_ann_df = split_dataframe_rows(self._score_ann_df,
-                                                  column_selectors=[
-                                                      'Feature', 'Gene',
-                                                      'Transcript',
-                                                      'Variant_DNA_Level',
-                                                      'Variant_Protein_Level'
-                                                  ],
-                                                  row_delimiter='|')
         return self._score_ann_df
 
     @property
@@ -233,9 +232,8 @@ class snpScoreBox:
             self.score_ann_file = self.outdir / \
                 f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
-                if self.vcf_ann_file:
-                    self.score_ann_df.to_csv(
-                        self.score_ann_file, index=False)
+                self.score_ann_df.to_csv(
+                    self.score_ann_file, index=False)
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))
