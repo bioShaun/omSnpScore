@@ -74,6 +74,24 @@ def sample_and_group(*args):
     return sample_list, group_list
 
 
+def sample_and_group_for_web(parameters_obj):
+    group_names = parameters_obj.get('group_names')
+    if group_names:
+        pass
+    else:
+        group_names = GROUPS
+    sample_list = []
+    group_list = []
+    for group_i in group_names:
+        if parameters_obj.get(group_i):
+            group_list.extend([group_i] * len(parameters_obj[group_i]))
+            sample_list.extend(parameters_obj[group_i])
+    if len(group_names) == 1:
+        if group_names[0] == 'not_a_group_id':
+            group_list = sample_list[:]
+    return sample_list, group_list
+
+
 def freq_accordance(freq_a, freq_b, message, equal=True):
     non_legal_freq = (freq_a != 0.5) and (freq_b != 0.5)
     assert non_legal_freq, 'alt freqency should not equal to 0.5.'

@@ -91,6 +91,8 @@ class snpTable:
     samples = attr.ib(factory=list)
     sample_label = attr.ib(factory=list)
     min_depth = attr.ib(default=5)
+    filter_dp_grp = attr.ib(default=[MUT_NAME, WILD_NAME])
+    save_table = attr.ib(default=True)
 
     def __attrs_post_init__(self):
         self._ad_df = None
@@ -174,8 +176,10 @@ class snpTable:
         grp_ad_df = self.grp_dep_df.copy()
         cols = grp_ad_df.columns
         for col_i in cols:
-            col_i_ad = self.grp_ref_dep_df.loc[:, col_i].astype('int').astype('str').str.cat(
-                self.grp_alt_dep_df.loc[:, col_i].astype('int').astype('str'), sep=','
+            col_i_ad = self.grp_ref_dep_df.loc[
+                :, col_i].astype('int').astype('str').str.cat(
+                self.grp_alt_dep_df.loc[
+                    :, col_i].astype('int').astype('str'), sep=','
             )
             grp_ad_df.loc[:, f'{col_i}.AD'] = col_i_ad
         grp_ad_df.drop(cols, axis=1, inplace=True)
@@ -187,9 +191,8 @@ class snpTable:
             if self.alt_freq_file.is_file():
                 self._alt_freq_df = pd.read_csv(self.alt_freq_file)
             else:
-                mw_group = [MUT_NAME, WILD_NAME]
-                dep_passed_snp = self.grp_dep_df.loc[:, mw_group].min(
-                    1) >= self.min_depth
+                dep_passed_snp = self.grp_dep_df.loc[
+                    :, self.filter_dp_grp].min(1) >= self.min_depth
                 self.passed_grp_dep_df = self.grp_dep_df[dep_passed_snp]
                 self.passed_grp_alt_dep_df = self.grp_alt_dep_df[
                     dep_passed_snp]
@@ -199,13 +202,15 @@ class snpTable:
                 logger.info('Calculating alt allele freq...')
                 self._alt_freq_df = self.passed_grp_alt_dep_df / \
                     self.passed_grp_dep_df
-                self._alt_freq_df.columns = [f'{col_i}.FREQ' for col_i in self._alt_freq_df.columns]
+                self._alt_freq_df.columns = [
+                    f'{col_i}.FREQ' for col_i in self._alt_freq_df.columns]
                 self._alt_freq_df = self._alt_freq_df.merge(
                     self.grp_ad_df,
                     left_index=True,
                     right_index=True)
                 self._alt_freq_df = self._alt_freq_df.reset_index()
-                self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
+                if self.save_table:
+                    self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
         return self._alt_freq_df
 
     @property
@@ -222,3 +227,25 @@ class snpTable:
             qtlseqr_df = qtlseqr_df.reset_index()
             qtlseqr_df.to_csv(self._qtlseqr_snp_table, index=False)
         return self._qtlseqr_snp_table
+
+
+@attr.s
+class snpAnnTable(snpTable):
+
+    @property
+    def grp_dep_df(self):
+        if self._grp_dep_df is None:
+            self.dep_df = self.ad_df.loc[:, 'dep_count'].copy()
+            self.dep_df.columns = self.sample_label
+            logger.info('Group depth reads...')
+            self._grp_dep_df = self.dep_df.T.groupby(level=0).agg('sum').T
+        return self._grp_dep_df
+
+    @property
+    def grp_alt_dep_df(self):
+        if self._grp_alt_dep_df is None:
+            logger.info('Group alt reads...')
+            self.alt_df = self.ad_df.loc[:, 'alt_count'].copy()
+            self.alt_df.columns = self.sample_label
+            self._grp_alt_dep_df = self.alt_df.T.groupby(level=0).agg('sum').T
+        return self._grp_alt_dep_df
