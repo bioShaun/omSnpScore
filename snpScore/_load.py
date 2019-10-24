@@ -17,7 +17,7 @@ class tableFromVcf:
 
     vcf = attr.ib(converter=Path)
     out_dir = attr.ib(converter=Path)
-    thread = attr.ib(default=1)
+    thread = attr.ib(default=1, converter=int)
 
     @property
     def vcf_samples(self):
@@ -90,7 +90,7 @@ class snpTable:
     table_dirs = attr.ib(factory=list)
     samples = attr.ib(factory=list)
     sample_label = attr.ib(factory=list)
-    min_depth = attr.ib(default=5)
+    min_depth = attr.ib(default=5, converter=int)
     filter_dp_grp = attr.ib(default=[MUT_NAME, WILD_NAME])
     save_table = attr.ib(default=True)
 
