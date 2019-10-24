@@ -1,3 +1,4 @@
+import re
 import asyncio
 import shutil
 import numpy as np
@@ -366,3 +367,25 @@ def valid_grp(grp_list):
         if member.value in grp_list:
             valid_grp_list.append(member.value)
     return valid_grp_list
+
+
+def abbr_sample_id(sample_id):
+    pattern = re.compile('(TC[A-Z])0+(\w+)')
+    if pattern.match(sample_id):
+        pre, suf = pattern.match(sample_id).groups()
+        return f'{pre}{suf}'
+    return sample_id
+
+
+def outdir_suffix_from_params(params):
+    outdir_suffix_suffix = []
+    for group_i in GROUPS:
+        group_i_list = []
+        if params.get(group_i) is None:
+            continue
+        sample_list = sorted(params[group_i])
+        for sample_i in sample_list:
+            sample_i_id = sample_i.split('.')[0]
+            group_i_list.append(abbr_sample_id(sample_i_id))
+        outdir_suffix_suffix.append('_'.join(group_i_list))
+    return '/'.join(outdir_suffix_suffix)
