@@ -1,6 +1,7 @@
 # TODO: score system involve background and parent
 
 import attr
+import time
 import numpy as np
 import pandas as pd
 from loguru import logger
@@ -171,6 +172,7 @@ class snpScoreBox:
                     left_on=['Chrom', 'Pos', 'Alt'],
                     right_on=['#CHROM', 'POS', 'ALT'],
                     how='left')
+                del self._snp_ann_df
                 self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
                                              inplace=True,
                                              axis=1)
@@ -238,8 +240,9 @@ class snpScoreBox:
             if not self.score_ann_file.is_file():
                 self.score_ann_df.to_csv(
                     self.score_ann_file, index=False)
+                del self._snp_window_ann_df
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
-        self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
+        # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         return self.plot_cmds
