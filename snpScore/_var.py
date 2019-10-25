@@ -27,8 +27,8 @@ class SnpRep(IntEnum):
 
 
 script_dir = Path(__file__).parent
-SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
-QTLSEQR_PLOT = script_dir / 'run_qtlseqr.R'
+SNP_SCORE_PLOT = script_dir / 'plot/snpScorePlot.R'
+QTLSEQR_PLOT = script_dir / 'plot/run_qtlseqr.R'
 DATA_DIR = PurePath(pkg_resources.resource_filename('snpScore', 'data'))
 CHR_SIZE = DATA_DIR / 'chr.size'
 
