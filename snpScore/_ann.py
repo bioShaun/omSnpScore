@@ -4,6 +4,7 @@ import pandas as pd
 from io import StringIO
 from loguru import logger
 from pathlib import Path, PurePath
+from datetime import datetime
 from pybedtools import BedTool
 from ._load import snpAnnTable
 from ._score import snpAnnBox
@@ -93,7 +94,8 @@ def snp_ann_pipe(gene_bed,
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     # step1 make selected gene/region bedfile
-    target_region_bed = outdir / 'target.bed'
+    time_now_str = '-'.join(str(datetime.now()).split())
+    target_region_bed = outdir / f'target.{time_now_str}.bed'
     if genes:
         gene_list = genes.split(',')
         make_gene_bed(gene_bed, gene_list, target_region_bed)

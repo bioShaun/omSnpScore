@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from pathlib import Path
+from datetime import datetime
 from collections import OrderedDict
 from ._var import REF_FREQ, QTLSEQR_PLOT
 from ._var import SnpGroup, MUT_NAME, WILD_NAME
@@ -246,13 +247,14 @@ class snpScoreBox:
 class snpAnnBox(snpScoreBox):
 
     target_bed = attr.ib(default=None)
-    target_name = attr.ib(default='target')
 
     @property
     def alt_freq_dis_df(self):
+        time_now_str = '-'.join(str(datetime.now()).split())
+        target_name = f'target.{time_now_str}'
         if self._alt_freq_dis_df is None:
             self._alt_freq_dis_df = snp_freq_by_window(
-                self.alt_freq_df, self.target_name,
+                self.alt_freq_df, target_name,
                 self.target_bed, self.outdir)
         return self._alt_freq_dis_df
 
