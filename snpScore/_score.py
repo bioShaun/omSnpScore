@@ -26,14 +26,16 @@ class snpScoreBox:
     outdir = attr.ib(converter=Path)
     grp_list = attr.ib(factory=list)
     method_list = attr.ib(factory=list)
-    min_depth = attr.ib(default=5)
-    snp_number_window = attr.ib(default=20)
-    snp_number_step = attr.ib(default=5)
-    ref_freq = attr.ib(default=REF_FREQ)
-    p_ref_freq = attr.ib(default=REF_FREQ)
-    background_ref_freq = attr.ib(default=REF_FREQ)
-    mutant_alt_exp = attr.ib(default=None)
-    wild_alt_exp = attr.ib(default=None)
+    min_depth = attr.ib(default=5, converter=int)
+    snp_number_window = attr.ib(default=20, converter=int)
+    snp_number_step = attr.ib(default=5, converter=int)
+    ref_freq = attr.ib(default=REF_FREQ, converter=float)
+    p_ref_freq = attr.ib(default=REF_FREQ, converter=float)
+    background_ref_freq = attr.ib(default=REF_FREQ, converter=float)
+    mutant_alt_exp = attr.ib(
+        default=None, converter=lambda x: x if x is None else float(x))
+    wild_alt_exp = attr.ib(
+        default=None, converter=lambda x: x if x is None else float(x))
     vcf_ann_file = attr.ib(default=None)
 
     def __attrs_post_init__(self):
@@ -266,10 +268,10 @@ class qtlSeqr:
     out_dir = attr.ib(converter=Path)
     run_qtlseqr = attr.ib(factory=bool)
     run_ed = attr.ib(factory=bool)
-    window = attr.ib(default=1e7)
-    ref_freq = attr.ib(default=REF_FREQ)
+    window = attr.ib(default=1e7, converter=int)
+    ref_freq = attr.ib(default=REF_FREQ, converter=float)
     pop_stru = attr.ib(default='RIL')
-    min_sample_dp = attr.ib(default=5)
+    min_sample_dp = attr.ib(default=5, converter=int)
 
     @property
     def qtlseqr_job(self):
