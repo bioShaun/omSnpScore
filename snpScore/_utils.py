@@ -240,11 +240,11 @@ def log_varscore(row):
 
 def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
     if mut == 'alt':
-        mut_freq = freq_dict[SnpGroupFreq.mut.value][1]
-        wild_freq = freq_dict[SnpGroupFreq.wild.value][0]
+        mut_freq = freq_dict[SnpGroup.mut.value][1]
+        wild_freq = freq_dict[SnpGroup.wild.value][0]
     else:
-        mut_freq = freq_dict[SnpGroupFreq.mut.value][0]
-        wild_freq = freq_dict[SnpGroupFreq.wild.value][1]
+        mut_freq = freq_dict[SnpGroup.mut.value][0]
+        wild_freq = freq_dict[SnpGroup.wild.value][1]
     if np.isinf(mut_freq) or np.isinf(wild_freq):
         return None
     else:

@@ -38,6 +38,7 @@ class snpScoreBox:
     wild_alt_exp = attr.ib(
         default=None, converter=lambda x: x if x is None else float(x))
     vcf_ann_file = attr.ib(default=None)
+    save_mem = attr.ib(default=True)
 
     def __attrs_post_init__(self):
         self._freq_dict = OrderedDict()
@@ -172,7 +173,8 @@ class snpScoreBox:
                     left_on=['Chrom', 'Pos', 'Alt'],
                     right_on=['#CHROM', 'POS', 'ALT'],
                     how='left')
-                del self._snp_ann_df
+                if self.save_mem:
+                    self._snp_ann_df = None
                 self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
                                              inplace=True,
                                              axis=1)
@@ -240,7 +242,8 @@ class snpScoreBox:
             if not self.score_ann_file.is_file():
                 self.score_ann_df.to_csv(
                     self.score_ann_file, index=False)
-                del self._snp_window_ann_df
+                if self.save_mem:
+                    self._snp_window_ann_df = None
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))
