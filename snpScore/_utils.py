@@ -296,7 +296,7 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
     return varscore_df
 
 
-def score_plot(score_file, method):
+def score_plot(score_file, method, plot_title=""):
     out_prefix = score_file.with_suffix('.plot')
     if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density']:
         out_plot = score_file.with_suffix('.plot.jpg')
@@ -308,7 +308,8 @@ def score_plot(score_file, method):
     cmd = (f'Rscript {SNP_SCORE_PLOT} '
            f'--input {score_file} '
            f'--output {out_prefix} '
-           f'--plot_type {method}')
+           f'--plot_type {method} '
+           f'--title {plot_title}')
     if not out_plot.exists():
         return cmd
     else:

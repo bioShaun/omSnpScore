@@ -236,7 +236,7 @@ class snpScoreBox:
                 self.score_df.to_csv(self.score_file)
             else:
                 self.score_df = pd.read_csv(self.score_file)
-            self.plot_cmds.append(score_plot(self.score_file, method))
+            self.plot_cmds.append(score_plot(self.score_file, method, f'{score_name}.{method_name}'))
             self.score_ann_file = self.outdir / \
                 f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
@@ -246,7 +246,8 @@ class snpScoreBox:
                     self._snp_window_ann_df = None
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
-        self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))
+        self.plot_cmds.append(score_plot(
+            self.alt_filter_freq_file, 'density', self.group_label))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         return self.plot_cmds
 
