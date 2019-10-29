@@ -89,11 +89,12 @@ chrom_num <- length(unique(df_filt$CHROM))
 table_name <- c()
 
 if (qtlseqr_flag) {
+    filter_stat = 1 - 2*ref_freq
     table_name <- c('qtlseqr', as.integer(window), pop_stru)
     outname <- paste('qtlSeqr', as.integer(window), ref_freq, min_sample_dp, pop_stru, sep='.')
     out_prefix <- file.path(out_dir, outname)
     df_filt <- runGprimeAnalysis(SNPset = df_filt, windowSize = window, outlierFilter = "deltaSNP")
-    df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50)
+    df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50, filter=filter_stat)
     png(paste(out_prefix, 'deltaSNP.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
     print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
     dev.off()
@@ -110,12 +111,16 @@ if (qtlseqr_flag) {
     print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
     dev.off()
 
-    getQTLTable(
+    res <- try(getQTLTable(
         SNPset = df_filt,
-        alpha = 0.01,
+        alpha = 0.1,
         export = TRUE,
         fileName = paste(out_prefix, "QTLseqr.csv", sep='.')
-    )
+    ))
+    if(inherits(res, "try-error"))
+    {
+       print("Can not find significant region using QTLseqr!")
+    }
 } 
 
 if (ed_flag) {
