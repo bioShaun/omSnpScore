@@ -23,6 +23,10 @@ p <- add_argument(
 p <- add_argument(
   p, '--output', 
   help = 'output prefix')
+p <- add_argument(
+  p, '--title',
+  help = 'plot title',
+  default="")
 argv <- parse_args(p)
 
 # var_table <- 'genome.window.w1000000.s500000.bed.var.score.txt'
@@ -32,7 +36,7 @@ argv <- parse_args(p)
 var_table <- argv$input
 output_prefix <- argv$output
 plot_type <- argv$plot_type
-
+plot_title <- argv$title
 
 snp_index_plot <- function(each_chr) {
   
@@ -87,10 +91,12 @@ if (plot_type == 'density') {
   plot_data <- var_table_df[, c('SNP', 'Chr', 'Pos')]
   omsCMplot(plot_data,plot.type="d",bin.size=1e6,
          col=c("darkgreen", "yellow", "red"),
-         file="jpg", dpi=300, out.name = output_prefix)
+         file="jpg", dpi=300, out.name = output_prefix,
+         plot.title=plot_title)
   omsCMplot(plot_data,plot.type="d",bin.size=1e6,
          col=c("darkgreen", "yellow", "red"),
-         file="pdf", dpi=300, out.name = output_prefix) 
+         file="pdf", dpi=300, out.name = output_prefix,
+         plot.title=plot_title) 
 } else if (plot_type == 'snp_index') {
   
   if ( ! dir.exists(output_prefix)) {
@@ -113,10 +119,10 @@ if (plot_type == 'density') {
   plot_data <- var_table_df[, c('SNP', 'Chrom', 'Start', 'snp_score')]
   omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL,
              chr.den.col=NULL,file="jpg",memo="test",dpi=300,ylab = "Score",
-             out.name = output_prefix, cex.axis = 0.8)
+             out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
   omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL,
              chr.den.col=NULL,file="pdf",memo="test",dpi=300,ylab = "Score",
-             out.name = output_prefix, cex.axis = 0.8)
+             out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
 }
 
 
