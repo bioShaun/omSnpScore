@@ -13,6 +13,7 @@ suppressMessages(library(omplotr))
 
 
 options(stringsAsFactors = F)
+
 p <- arg_parser("snp score plot")
 p <- add_argument(
   p, '--input', 
@@ -27,6 +28,10 @@ p <- add_argument(
   p, '--title',
   help = 'plot title',
   default="")
+p <- add_argument(
+  p, '--chr_size',
+  help = 'chr size file',
+  default=NULL)
 argv <- parse_args(p)
 
 # var_table <- 'genome.window.w1000000.s500000.bed.var.score.txt'
@@ -37,6 +42,10 @@ var_table <- argv$input
 output_prefix <- argv$output
 plot_type <- argv$plot_type
 plot_title <- argv$title
+chr.size <- argv$chr_size
+
+
+wheat_cols <- c("#377EB8", "#4DAF4A", "#FF7F00")
 
 snp_index_plot <- function(each_chr) {
   
@@ -92,11 +101,11 @@ if (plot_type == 'density') {
   omsCMplot(plot_data,plot.type="d",bin.size=1e6,
          col=c("darkgreen", "yellow", "red"),
          file="jpg", dpi=300, out.name = output_prefix,
-         plot.title=plot_title)
+         plot.title=plot_title, chr.size=chr.size)
   omsCMplot(plot_data,plot.type="d",bin.size=1e6,
          col=c("darkgreen", "yellow", "red"),
          file="pdf", dpi=300, out.name = output_prefix,
-         plot.title=plot_title) 
+         plot.title=plot_title, chr.size=chr.size) 
 } else if (plot_type == 'snp_index') {
   
   if ( ! dir.exists(output_prefix)) {
@@ -115,12 +124,20 @@ if (plot_type == 'density') {
 } else {
   var_table_df$Start <- var_table_df$Start + 1
   var_table_df$SNP <- paste(var_table_df$Chrom, var_table_df$Start, sep = ':')
-  var_table_df$Chrom <- str_remove(var_table_df$Chrom, fixed('chr', ignore_case = T))
   plot_data <- var_table_df[, c('SNP', 'Chrom', 'Start', 'snp_score')]
-  omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL,
+  if (!(is.na(chr.size))) {
+    chr.size.df <- read.delim(chr.size, header=F, col.names=c('Chrom', 'Start'))
+    chr.size.df$SNP <- paste(chr.size.df$Chrom, chr.size.df$Start, sep = ':')
+    chr.size.df$snp_score <- 1
+    chr.size.df <- chr.size.df[, c('SNP', 'Chrom', 'Start', 'snp_score')]
+    plot_data <- rbind(plot_data, chr.size.df)
+    plot_data <- arrange(plot_data, Chrom, Start)
+  }
+  plot_data$Chrom <- str_remove(plot_data$Chrom, fixed('chr', ignore_case = T))
+  omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL, col = wheat_cols,
              chr.den.col=NULL,file="jpg",memo="test",dpi=300,ylab = "Score",
-             out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
-  omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL,
+             out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title, )
+  omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL, col = wheat_cols,
              chr.den.col=NULL,file="pdf",memo="test",dpi=300,ylab = "Score",
              out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
 }

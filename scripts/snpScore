@@ -7,7 +7,7 @@ from pathlib import Path
 from snpScore import tableFromVcf, sample_and_group_for_web
 from snpScore import tableFromSelectTable
 from snpScore import snpTable, async_batch_sh_jobs
-from snpScore import snpScoreBox, qtlSeqr
+from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 from snpScore import outdir_suffix_from_params
 
 
@@ -32,6 +32,10 @@ from snpScore import outdir_suffix_from_params
     required=True,
     type=click.Path()
 )
+@click.option('--chr_size',
+              help='chr size file, default is chr size of bread wheat.',
+              type=click.Path(exists=True, dir_okay=False),
+              default=CHR_SIZE)
 @click.option(
     '-o',
     '--outdir',
@@ -42,6 +46,7 @@ from snpScore import outdir_suffix_from_params
 def main(parameters,
          vcf_dir,
          vcf_ann_file,
+         chr_size,
          outdir):
     parameters_obj = json.loads(parameters)
     sample_list, group_list = sample_and_group_for_web(parameters_obj)
@@ -90,6 +95,7 @@ def main(parameters,
                                grp_list=group_list,
                                method_list=snp_score_methods,
                                outdir=results_dir,
+                               chr_size=chr_size,
                                min_depth=min_depth,
                                snp_number_window=input_params.get(
                                    'snp_number_window', 20),
@@ -108,6 +114,7 @@ def main(parameters,
     async_batch_sh_jobs(run_jobs, thread=4)
     logger.info('The End.')
     print(full_outdir)
+
 
 if __name__ == '__main__':
     main()

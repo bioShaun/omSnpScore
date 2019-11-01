@@ -25,6 +25,7 @@ from ._utils import valid_grp
 class snpScoreBox:
     alt_freq_df = attr.ib()
     outdir = attr.ib(converter=Path)
+    chr_size = attr.ib(converter=str)
     grp_list = attr.ib(factory=list)
     method_list = attr.ib(factory=list)
     min_depth = attr.ib(default=5, converter=int)
@@ -236,7 +237,9 @@ class snpScoreBox:
                 self.score_df.to_csv(self.score_file)
             else:
                 self.score_df = pd.read_csv(self.score_file)
-            self.plot_cmds.append(score_plot(self.score_file, method, f'{score_name}.{method_name}'))
+            self.plot_cmds.append(
+                score_plot(self.score_file, method,
+                           f'{score_name}.{method_name}', self.chr_size))
             self.score_ann_file = self.outdir / \
                 f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
@@ -247,7 +250,8 @@ class snpScoreBox:
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(score_plot(
-            self.alt_filter_freq_file, 'density', self.group_label))
+            self.alt_filter_freq_file, 'density',
+            self.group_label, self.chr_size))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         return self.plot_cmds
 
