@@ -35,6 +35,10 @@ class UnsupportedPlot(Exception):
     pass
 
 
+class DuplicatedRecord(Exception):
+    pass
+
+
 async def async_sh_job(cmd, sema):
     with (await sema):
         p = await asyncio.create_subprocess_shell(

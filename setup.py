@@ -24,7 +24,6 @@ setup(
         'scripts/table2hd5',
         'scripts/table2pkl',
         'scripts/snpScore-cli',
-        'scripts/snpScore-cli-v2',
         'scripts/merge_vcf_feature',
         'scripts/snpInf',
         'scripts/snpInf-cli',

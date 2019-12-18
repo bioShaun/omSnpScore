@@ -9,6 +9,7 @@ from ._var import MUT_NAME, WILD_NAME
 from ._var import VCF_SAMPLE_INDEX
 from ._utils import async_batch_sh_jobs, check_app
 from ._utils import SampleFileNotMatch, UnsupportedFormat
+from ._utils import DuplicatedRecord
 from ._utils import valid_grp
 
 
@@ -69,7 +70,13 @@ class tableFromSelectTable(tableFromVcf):
     def vcf_samples(self):
         return self.st_df.columns[3:]
 
+    def check_table(self):
+        if len(self.st_df[self.st_df.duplicated()]):
+            raise DuplicatedRecord(
+                'Duplicated records in snp table, please check!')
+
     def _extract_from_vcf(self, sample_id):
+        self.check_table()
         check_app('table2pkl')
         sample_cols = self.pos_cols[:]
         sample_cols.append(sample_id)
