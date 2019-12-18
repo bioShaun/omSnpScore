@@ -12,6 +12,14 @@ class SnpGroup(Enum):
     bg = 'background'
 
 
+class SnpGroupFreq(Enum):
+    mut = 'mutant.FREQ'
+    wild = 'wild.FREQ'
+    mut_pa = 'mutant_parent.FREQ'
+    wild_pa = 'wild_parent.FREQ'
+    bg = 'background.FREQ'
+
+
 class SnpRep(IntEnum):
     alt = 0
     ref = 1
@@ -19,8 +27,8 @@ class SnpRep(IntEnum):
 
 
 script_dir = Path(__file__).parent
-SNP_SCORE_PLOT = script_dir / 'snpScorePlot.R'
-QTLSEQR_PLOT = script_dir / 'run_qtlseqr.R'
+SNP_SCORE_PLOT = script_dir / 'plot/snpScorePlot.R'
+QTLSEQR_PLOT = script_dir / 'plot/run_qtlseqr.R'
 DATA_DIR = PurePath(pkg_resources.resource_filename('snpScore', 'data'))
 CHR_SIZE = DATA_DIR / 'chr.size'
 

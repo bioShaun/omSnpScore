@@ -4,4 +4,8 @@ from ._load import snpTable
 from ._score import snpScoreBox
 from ._score import qtlSeqr
 from ._utils import sample_and_group
+from ._utils import sample_and_group_for_web
 from ._utils import async_batch_sh_jobs
+from ._utils import outdir_suffix_from_params
+from ._ann import snp_ann_pipe
+from ._var import CHR_SIZE

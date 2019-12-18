@@ -8,7 +8,9 @@ from functools import reduce
 from ._var import MUT_NAME, WILD_NAME
 from ._var import VCF_SAMPLE_INDEX
 from ._utils import async_batch_sh_jobs, check_app
-from ._utils import SampleFileNotMatch
+from ._utils import SampleFileNotMatch, UnsupportedFormat
+from ._utils import DuplicatedRecord
+from ._utils import valid_grp
 
 
 @attr.s
@@ -16,7 +18,7 @@ class tableFromVcf:
 
     vcf = attr.ib(converter=Path)
     out_dir = attr.ib(converter=Path)
-    thread = attr.ib(default=1)
+    thread = attr.ib(default=1, converter=int)
 
     @property
     def vcf_samples(self):
@@ -68,7 +70,13 @@ class tableFromSelectTable(tableFromVcf):
     def vcf_samples(self):
         return self.st_df.columns[3:]
 
+    def check_table(self):
+        if len(self.st_df[self.st_df.duplicated()]):
+            raise DuplicatedRecord(
+                'Duplicated records in snp table, please check!')
+
     def _extract_from_vcf(self, sample_id):
+        self.check_table()
         check_app('table2pkl')
         sample_cols = self.pos_cols[:]
         sample_cols.append(sample_id)
@@ -89,7 +97,9 @@ class snpTable:
     table_dirs = attr.ib(factory=list)
     samples = attr.ib(factory=list)
     sample_label = attr.ib(factory=list)
-    min_depth = attr.ib(default=5)
+    min_depth = attr.ib(default=5, converter=int)
+    filter_dp_grp = attr.ib(default=[MUT_NAME, WILD_NAME])
+    save_table = attr.ib(default=True)
 
     def __attrs_post_init__(self):
         self._ad_df = None
@@ -99,6 +109,7 @@ class snpTable:
         self.alt_freq_file = self.out_dir / 'snp.freq.csv'
         self._qtlseqr_snp_table = self.out_dir / 'qtlseqr.csv'
         self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.valid_grp = valid_grp(self.sample_label)
 
     @property
     def snp_table_files(self):
@@ -107,9 +118,13 @@ class snpTable:
             sp_dir = []
             for dir_i in self.table_dirs:
                 sp_i_pkl = Path(dir_i) / f'{sp_i}.pkl'
+                sp_i_h5 = Path(dir_i) / f'{sp_i}.h5'
                 if sp_i_pkl.is_file():
                     sp_dir.append(dir_i)
                     table_file_list.append(sp_i_pkl)
+                elif sp_i_h5.is_file():
+                    sp_dir.append(dir_i)
+                    table_file_list.append(sp_i_h5)
             if len(sp_dir) > 1:
                 sp_dir_str = ', '.join(sp_dir)
                 logger.error(f'{sp_i} in multiple directory: {sp_dir_str}')
@@ -123,9 +138,15 @@ class snpTable:
     def ad_df(self):
         if self._ad_df is None:
             logger.info('Loading tables...')
-            self.ad_dfs = [
-                pd.read_pickle(table_i) for table_i in self.snp_table_files
-            ]
+            self.ad_dfs = []
+            for table_i in self.snp_table_files:
+                if table_i.suffix == '.pkl':
+                    table_i_df = pd.read_pickle(table_i)
+                elif table_i.suffix == '.h5':
+                    table_i_df = pd.read_hdf(table_i)
+                else:
+                    raise UnsupportedFormat
+                self.ad_dfs.append(table_i_df)
             logger.info('Concatinating tables...')
             self._ad_df = reduce(
                 lambda x, y: pd.merge(x, y, on=['Chr', 'Pos', 'Alt']),
@@ -136,10 +157,11 @@ class snpTable:
     @property
     def grp_dep_df(self):
         if self._grp_dep_df is None:
-            logger.info('Group depth reads...')
             self.dep_df = self.ad_df.loc[:, 'dep_count'].copy()
             self.dep_df.columns = self.sample_label
+            logger.info('Group depth reads...')
             self._grp_dep_df = self.dep_df.T.groupby(level=0).agg('sum').T
+            self._grp_dep_df = self._grp_dep_df.loc[:, self.valid_grp]
         return self._grp_dep_df
 
     @property
@@ -149,6 +171,7 @@ class snpTable:
             self.alt_df = self.ad_df.loc[:, 'alt_count'].copy()
             self.alt_df.columns = self.sample_label
             self._grp_alt_dep_df = self.alt_df.T.groupby(level=0).agg('sum').T
+            self._grp_alt_dep_df = self._grp_alt_dep_df.loc[:, self.valid_grp]
         return self._grp_alt_dep_df
 
     @property
@@ -156,25 +179,45 @@ class snpTable:
         return self.grp_dep_df - self.grp_alt_dep_df
 
     @property
+    def grp_ad_df(self):
+        grp_ad_df = self.grp_dep_df.copy()
+        cols = grp_ad_df.columns
+        for col_i in cols:
+            col_i_ad = self.grp_ref_dep_df.loc[
+                :, col_i].astype('int').astype('str').str.cat(
+                self.grp_alt_dep_df.loc[
+                    :, col_i].astype('int').astype('str'), sep=','
+            )
+            grp_ad_df.loc[:, f'{col_i}.AD'] = col_i_ad
+        grp_ad_df.drop(cols, axis=1, inplace=True)
+        return grp_ad_df
+
+    @property
     def alt_freq_df(self):
         if self._alt_freq_df is None:
             if self.alt_freq_file.is_file():
                 self._alt_freq_df = pd.read_csv(self.alt_freq_file)
             else:
-                logger.info('Filtering allele depth...')
-                mw_group = [MUT_NAME, WILD_NAME]
-                dep_passed_snp = self.grp_dep_df.loc[:, mw_group].min(
-                    1) >= self.min_depth
+                dep_passed_snp = self.grp_dep_df.loc[
+                    :, self.filter_dp_grp].min(1) >= self.min_depth
                 self.passed_grp_dep_df = self.grp_dep_df[dep_passed_snp]
                 self.passed_grp_alt_dep_df = self.grp_alt_dep_df[
                     dep_passed_snp]
+                logger.info('Filtering allele depth...')
                 self.passed_grp_dep_df.applymap(lambda x: x if x >= self.
                                                 min_depth else np.nan)
                 logger.info('Calculating alt allele freq...')
                 self._alt_freq_df = self.passed_grp_alt_dep_df / \
                     self.passed_grp_dep_df
+                self._alt_freq_df.columns = [
+                    f'{col_i}.FREQ' for col_i in self._alt_freq_df.columns]
+                self._alt_freq_df = self._alt_freq_df.merge(
+                    self.grp_ad_df,
+                    left_index=True,
+                    right_index=True)
                 self._alt_freq_df = self._alt_freq_df.reset_index()
-                self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
+                if self.save_table:
+                    self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
         return self._alt_freq_df
 
     @property
@@ -191,3 +234,25 @@ class snpTable:
             qtlseqr_df = qtlseqr_df.reset_index()
             qtlseqr_df.to_csv(self._qtlseqr_snp_table, index=False)
         return self._qtlseqr_snp_table
+
+
+@attr.s
+class snpAnnTable(snpTable):
+
+    @property
+    def grp_dep_df(self):
+        if self._grp_dep_df is None:
+            self.dep_df = self.ad_df.loc[:, 'dep_count'].copy()
+            self.dep_df.columns = self.sample_label
+            logger.info('Group depth reads...')
+            self._grp_dep_df = self.dep_df.T.groupby(level=0).agg('sum').T
+        return self._grp_dep_df
+
+    @property
+    def grp_alt_dep_df(self):
+        if self._grp_alt_dep_df is None:
+            logger.info('Group alt reads...')
+            self.alt_df = self.ad_df.loc[:, 'alt_count'].copy()
+            self.alt_df.columns = self.sample_label
+            self._grp_alt_dep_df = self.alt_df.T.groupby(level=0).agg('sum').T
+        return self._grp_alt_dep_df

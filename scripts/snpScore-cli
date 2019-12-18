@@ -1,149 +1,204 @@
 #!/usr/bin/env python3
 
 import click
-from snpScore import core
+from loguru import logger
+from pathlib import Path
+from snpScore import tableFromVcf, sample_and_group
+from snpScore import tableFromSelectTable
+from snpScore import snpTable, async_batch_sh_jobs
+from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 
 
 @click.command()
-@click.option(
-    '-vcf',
-    '--vcf_table_files',
-    help='vcf hd5 files, seperated with ",".',
-    required=True,
-    type=click.STRING
-)
-@click.option(
-    '--vcf_ann_file',
-    help='snp annotation file.',
-    required=True,
-    type=click.Path()
-)
-@click.option(
-    '-g',
-    '--group_labels',
-    help='vcf file groups, seperated with ",".',
-    type=click.STRING,
-    required=True
-)
-@click.option(
-    '-o',
-    '--outdir',
-    help='results directory.',
-    required=True,
-    type=click.Path()
-)
-@click.option(
-    '--mutant_alt_exp',
-    help='mutant alt frequency expectation.',
-    default=None,
-    type=click.FLOAT
-)
-@click.option(
-    '--wild_alt_exp',
-    help='wild alt frequency expectation.',
-    default=None,
-    type=click.FLOAT
-)
-@click.option(
-    '--mutant_parent_alt_exp',
-    help='mutant parent alt frequency expectation.',
-    default=None,
-    type=click.FLOAT
-)
-@click.option(
-    '--wild_parent_alt_exp',
-    help='wild parent alt frequency expectation.',
-    default=None,
-    type=click.FLOAT
-)
-@click.option(
-    '--background_alt_exp',
-    help='background alt frequency expectation.',
-    default=None,
-    type=click.FLOAT
-)
-@click.option(
-    '--min_depth',
-    help='minimal read depth for a site to include in analysis.',
-    default=5,
-    type=click.INT
-)
-@click.option(
-    '--snp_number_window',
-    help='snp number slidewindow window size.',
-    default=20,
-    type=click.INT
-)
-@click.option(
-    '--snp_number_step',
-    help='snp number slidewindow step size.',
-    default=5,
-    type=click.INT
-)
-@click.option(
-    '--methods',
-    help='snp score calculation methods.',
-    default='var,snp_index',
-    type=click.STRING
-)
-@click.option(
-    '--qtlseqr_window',
-    help='snp window size for calculation.',
-    default=1e7,
-    type=click.INT
-)
-@click.option(
-    '--qtlseqr_window',
-    help='snp window size for calculation.',
-    default=1e7,
-    type=click.INT
-)
-@click.option(
-    '--qtlseqr_ref_freq',
-    help=('filter out SNPs with a Reference Allele Frequency '
-          'less than refAlleleFreq and greater than 1 - refAlleleFreq.'),
-    default=0.3,
-    type=click.FLOAT
-)
-@click.option(
-    '--pop_stru',
-    help='the population structure. Defaults to "F2" and assumes "RIL" otherwise.',
-    default='RIL',
-    type=click.STRING
-)
-def main(vcf_table_files,
-         group_labels,
-         outdir,
-         mutant_alt_exp,
-         wild_alt_exp,
-         mutant_parent_alt_exp,
-         wild_parent_alt_exp,
-         background_alt_exp,
-         min_depth,
-         snp_number_window,
-         snp_number_step,
-         methods,
-         vcf_ann_file,
-         qtlseqr_window,
-         qtlseqr_ref_freq,
-         pop_stru):
-    snp_score_obj = core.SNPscore(vcf_table_files=vcf_table_files,
-                                  vcf_ann_file=vcf_ann_file,
-                                  group_labels=group_labels,
-                                  outdir=outdir,
-                                  mutant_alt_exp=mutant_alt_exp,
-                                  wild_alt_exp=wild_alt_exp,
-                                  mutant_parent_alt_exp=mutant_parent_alt_exp,
-                                  wild_parent_alt_exp=wild_parent_alt_exp,
-                                  background_alt_exp=background_alt_exp,
-                                  min_depth=min_depth,
-                                  snp_number_window=snp_number_window,
-                                  snp_number_step=snp_number_step,
-                                  methods=methods,
-                                  qtlseqr_window=qtlseqr_window,
-                                  qtlseqr_ref_freq=qtlseqr_ref_freq,
-                                  pop_stru=pop_stru)
-    snp_score_obj.run
+@click.option('--vcf_file',
+              help=('vcf file path, can be more than one '
+                    '[--vcf_file vcf1 --vcf_file vcf2]'),
+              type=click.Path(exists=True, dir_okay=False),
+              multiple=True)
+@click.option('--vcf_table',
+              help=('vcf table path, can be more than one '
+                    '[--vcf_table vcf1 --vcf_table vcf2]'),
+              type=click.Path(exists=True, dir_okay=False),
+              multiple=True)
+@click.option('--vcf_dir',
+              help=('vcf table directory, can be more than one '
+                    '[--vcf_dir dir1 --vcf_dir dir2].'),
+              type=click.Path(exists=True, file_okay=False),
+              multiple=True)
+@click.option('-m',
+              '--mutant',
+              help='mutant sample ids, seperated with comma.',
+              type=click.STRING,
+              required=True)
+@click.option('-w',
+              '--wild',
+              help='wild sample ids, seperated with comma.',
+              type=click.STRING,
+              required=True)
+@click.option('-o',
+              '--outdir',
+              help='results directory.',
+              required=True,
+              type=click.Path())
+@click.option('-t',
+              '--thread',
+              help='Max thread for this program to use.',
+              default=4)
+@click.option('-mp',
+              '--mutant_parent',
+              help='mutant parent sample ids, seperated with comma.',
+              type=click.STRING,
+              default='')
+@click.option('-wp',
+              '--wild_parent',
+              help='wild parent sample ids, seperated with comma.',
+              type=click.STRING,
+              default='')
+@click.option('-bg',
+              '--background',
+              help='background sample ids, seperated with comma.',
+              type=click.STRING,
+              default='')
+@click.option('--vcf_ann_file',
+              help='snp annotation file.',
+              type=click.Path(exists=True, dir_okay=False),
+              default=None)
+@click.option('--chr_size',
+              help='chr size file, default is chr size of bread wheat.',
+              type=click.Path(exists=True, dir_okay=False),
+              default=CHR_SIZE)
+@click.option('--vcf_split_dir',
+              help=('Directory to save snp pickle file for each sample.'
+                    'Default is outdir/pickle'),
+              default=None)
+@click.option('--ref_freq',
+              help=('filter out SNPs with a '
+                    'Reference Allele Frequency '
+                    'less than refAlleleFreq '
+                    'and greater than 1 - refAlleleFreq.'),
+              default=0.3,
+              type=click.FLOAT)
+@click.option('--p_ref_freq',
+              help=('filter out parent SNPs with a '
+                    'Reference Allele Frequency '
+                    'less than refAlleleFreq '
+                    'and greater than 1 - refAlleleFreq.'),
+              default=0.3,
+              type=click.FLOAT)
+@click.option('--background_ref_freq',
+              help=('filter out background SNPs with a '
+                    'Reference Allele Frequency '
+                    'less than refAlleleFreq '
+                    'and greater than 1 - refAlleleFreq.'),
+              default=0.3,
+              type=click.FLOAT)
+@click.option('--mutant_alt_exp',
+              help='mutant alt frequency expectation.',
+              default=None,
+              type=click.FLOAT)
+@click.option('--wild_alt_exp',
+              help='wild alt frequency expectation.',
+              default=None,
+              type=click.FLOAT)
+@click.option('--min_depth',
+              help='minimal read depth for a site to include in analysis.',
+              default=5,
+              type=click.INT)
+@click.option('--snp_number_window',
+              help='snp number slidewindow window size.',
+              default=20,
+              type=click.INT)
+@click.option('--snp_number_step',
+              help='snp number slidewindow step size.',
+              default=5,
+              type=click.INT)
+@click.option('--varscore', is_flag=True, help='Run var score analysis.')
+@click.option('--snp_index', is_flag=True, help='Run snp index analysis.')
+@click.option('--est', is_flag=True, help='Run score estimate score analysis.')
+@click.option('--qtlseqr', is_flag=True, help='Run qtlseqr analysis.')
+@click.option('--ed', is_flag=True, help='Run snp ED analysis.')
+@click.option('--qtlseqr_window',
+              help='snp window size for calculation.',
+              default=1e7,
+              type=click.INT)
+@click.option('--qtlseqr_window',
+              help='snp window size for calculation.',
+              default=1e7,
+              type=click.INT)
+@click.option('--pop_stru',
+              help=('the population structure. '
+                    'Defaults to "F2" and assumes "RIL" otherwise.'),
+              default='RIL',
+              type=click.STRING)
+def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
+         mutant_parent, wild_parent, background, mutant_alt_exp, wild_alt_exp,
+         min_depth, snp_number_window, snp_number_step, vcf_ann_file,
+         qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore, snp_index, est,
+         ed, p_ref_freq, background_ref_freq, chr_size):
+    if vcf_file or vcf_table:
+        vcf_dir = list(vcf_dir)
+        if vcf_split_dir is None:
+            vcf_split_dir = Path(outdir) / 'pickle'
+        for vcf_i in vcf_file:
+            vcf2tb_obj = tableFromVcf(vcf=vcf_i,
+                                      out_dir=vcf_split_dir,
+                                      thread=thread)
+            vcf2tb_obj.make_table
+            vcf_dir.append(vcf_split_dir)
+        for st_i in vcf_table:
+            vcf2tb_obj = tableFromSelectTable(vcf=st_i,
+                                              out_dir=vcf_split_dir,
+                                              thread=thread)
+            vcf2tb_obj.make_table
+            vcf_dir.append(vcf_split_dir)
+
+    sample_list, group_list = sample_and_group(mutant, wild, mutant_parent,
+                                               wild_parent, background)
+    snp_table_obj = snpTable(out_dir=outdir,
+                             table_dirs=vcf_dir,
+                             samples=sample_list,
+                             sample_label=group_list,
+                             min_depth=min_depth)
+
+    run_jobs = []
+    if qtlseqr or ed:
+        qtlseqr_obj = qtlSeqr(input_table=snp_table_obj.qtlseqr_snp_table,
+                              window=qtlseqr_window,
+                              ref_freq=ref_freq,
+                              pop_stru=pop_stru,
+                              min_sample_dp=min_depth,
+                              out_dir=outdir,
+                              run_qtlseqr=qtlseqr,
+                              run_ed=ed)
+        run_jobs.append(qtlseqr_obj.qtlseqr_job)
+
+    snp_score_methods = []
+    if varscore:
+        snp_score_methods.append('var')
+    if snp_index:
+        snp_score_methods.append('snp_index')
+    if est:
+        snp_score_methods.extend(['est_mut_alt', 'est_mut_ref'])
+
+    snpscore_obj = snpScoreBox(alt_freq_df=snp_table_obj.alt_freq_df,
+                               grp_list=group_list,
+                               method_list=snp_score_methods,
+                               outdir=outdir,
+                               chr_size=chr_size,
+                               min_depth=min_depth,
+                               snp_number_window=snp_number_window,
+                               snp_number_step=snp_number_step,
+                               ref_freq=ref_freq,
+                               p_ref_freq=p_ref_freq,
+                               background_ref_freq=background_ref_freq,
+                               mutant_alt_exp=mutant_alt_exp,
+                               wild_alt_exp=wild_alt_exp,
+                               vcf_ann_file=vcf_ann_file,
+                               save_mem=False)
+    run_jobs.extend(snpscore_obj.score_jobs)
+    logger.info('Launch snpScore jobs...')
+    async_batch_sh_jobs(run_jobs, thread=thread)
+    logger.info('The End.')
 
 
 if __name__ == '__main__':

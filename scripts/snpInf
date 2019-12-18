@@ -2,7 +2,8 @@
 
 import json
 import click
-from snpScore import core, snpAnn
+from snpScore import tableFromVcf
+from snpScore import snp_ann_pipe, sample_and_group_for_web
 
 
 @click.command()
@@ -10,13 +11,14 @@ from snpScore import core, snpAnn
               type=click.Path(exists=True, dir_okay=False),
               help='gene position bedfile.',
               required=True)
-@click.option('--snp_ann_dir',
+@click.option('--vcf_dir',
+              help=('vcf table directory, can be more than one '
+                    '[--vcf_dir dir1 --vcf_dir dir2].'),
               type=click.Path(exists=True, file_okay=False),
-              help='snp annotation directory.',
-              required=True)
-@click.option('--snp_data_dir',
-              type=click.Path(exists=True, file_okay=False),
-              help='snp data directory.',
+              multiple=True)
+@click.option('--vcf_ann_file',
+              help='snp annotation file.',
+              type=click.Path(exists=True, dir_okay=False),
               required=True)
 @click.option('-p',
               '--parameters',
@@ -30,9 +32,11 @@ from snpScore import core, snpAnn
 @click.option('--logger_file',
               type=click.Path(dir_okay=False),
               help='logger file Path.',
-              default=None)          
-def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters, logger_file):
-    # step0 extract parameters
+              default=None)
+@click.option('--min_depth',
+              help='minimal snp depth',
+              default=1)
+def main(gene_bed, vcf_dir, vcf_ann_file, outdir, parameters, logger_file, min_depth):
     parameters_obj = json.loads(parameters)
     gene_list = parameters_obj.get('gene_id', '')
     genes = ','.join(gene_list)
@@ -44,15 +48,11 @@ def main(gene_bed, snp_ann_dir, snp_data_dir, outdir, parameters, logger_file):
     else:
         position = ''
     group_names = parameters_obj.get('group_names')
-    group_labels = core.snpStats.groups_from_params(parameters_obj,
-                                                    group_names)
-    vcf_table_files = core.snpStats.vcfs_from_params(parameters_obj,
-                                                     snp_data_dir, group_names)
-    if len(group_names) == 1:
-        if group_names[0] == 'not_a_group_id':
-            group_labels = ''
-    snpAnn.snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt='string', logger_file=logger_file)
+    sample_list, group_list = sample_and_group_for_web(parameters_obj)
+
+    snp_ann_pipe(gene_bed, vcf_ann_file, outdir, genes, position, vcf_dir,
+                 sample_list, group_list, min_depth, outfmt='string',
+                 logger_file=logger_file)
 
 
 if __name__ == "__main__":

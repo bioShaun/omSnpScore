@@ -1,27 +1,35 @@
 #!/usr/bin/env python3
 
 import click
-from snpScore import snpAnn
+from snpScore import tableFromVcf
+from snpScore import snp_ann_pipe, sample_and_group
+
 
 @click.command()
 @click.option('--gene_bed',
               type=click.Path(exists=True, dir_okay=False),
               help='gene position bedfile.',
               required=True)
-@click.option('--snp_ann_dir',
-              type=click.Path(exists=True, file_okay=False),
-              help='snp annotation directory.',
-              required=True)
-@click.option('-vcf',
-              '--vcf_table_files',
-              help='vcf hd5 files, seperated with ",".',
-              required=True,
-              type=click.STRING)
-@click.option('-g',
-              '--group_labels',
-              help='vcf file groups, seperated with ",".',
+@click.option('--samples',
               type=click.STRING,
-              default='')
+              help=('show snp information of samples, '
+                    'seperated with ",".'),
+              required=True)
+@click.option('--groups',
+              type=click.STRING,
+              help=('group names of samples, '
+                    'seperated with ",".'),
+              default=None)
+@click.option('--vcf_file',
+              help=('vcf file path, can be more than one '
+                    '[--vcf_file vcf1 --vcf_file vcf2]'),
+              type=click.Path(exists=True, dir_okay=False),
+              multiple=True)
+@click.option('--vcf_dir',
+              help=('vcf table directory, can be more than one '
+                    '[--vcf_dir dir1 --vcf_dir dir2].'),
+              type=click.Path(exists=True, file_okay=False),
+              multiple=True)
 @click.option('--outdir',
               type=click.Path(),
               help='output directory.',
@@ -43,10 +51,39 @@ from snpScore import snpAnn
               type=click.Path(dir_okay=False),
               help='logger file Path.',
               default=None)
-def main(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt, logger_file):
-    snpAnn.snp_ann_pipe(gene_bed, snp_ann_dir, outdir, genes, position, vcf_table_files,
-         group_labels, outfmt=outfmt, logger_file=logger_file)
+@click.option('--vcf_ann_file',
+              help='snp annotation file.',
+              type=click.Path(exists=True, dir_okay=False),
+              required=True)
+@click.option('--vcf_split_dir',
+              help=('Directory to save snp pickle file for each sample.'
+                    'Default is outdir/pickle'),
+              default=None)
+@click.option('--min_depth',
+              help='minimal snp depth',
+              default=1)
+def main(gene_bed, vcf_file, vcf_dir, samples, groups, outdir,
+         genes, position, vcf_split_dir, vcf_ann_file,
+         outfmt, logger_file, min_depth):
+    if vcf_file:
+        vcf_dir = list(vcf_dir)
+        if vcf_split_dir is None:
+            vcf_split_dir = Path(outdir) / 'pickle'
+        for vcf_i in vcf_file:
+            vcf2tb_obj = tableFromVcf(vcf=vcf_i,
+                                      out_dir=vcf_split_dir,
+                                      thread=thread)
+            vcf2tb_obj.make_table
+            vcf_dir.append(vcf_split_dir)
+
+    sample_list = samples.split(',')
+    if groups is None:
+        group_list = sample_list
+    else:
+        group_list = groups.split(',')
+    snp_ann_pipe(gene_bed, vcf_ann_file, outdir, genes, position, vcf_dir,
+                 sample_list, group_list, min_depth, outfmt=outfmt, logger_file=logger_file)
+
 
 if __name__ == "__main__":
     main()
