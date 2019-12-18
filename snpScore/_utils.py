@@ -35,6 +35,10 @@ class UnsupportedPlot(Exception):
     pass
 
 
+class DuplicatedRecord(Exception):
+    pass
+
+
 async def async_sh_job(cmd, sema):
     with (await sema):
         p = await asyncio.create_subprocess_shell(
@@ -240,11 +244,11 @@ def log_varscore(row):
 
 def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
     if mut == 'alt':
-        mut_freq = freq_dict[SnpGroupFreq.mut.value][1]
-        wild_freq = freq_dict[SnpGroupFreq.wild.value][0]
+        mut_freq = freq_dict[SnpGroup.mut.value][1]
+        wild_freq = freq_dict[SnpGroup.wild.value][0]
     else:
-        mut_freq = freq_dict[SnpGroupFreq.mut.value][0]
-        wild_freq = freq_dict[SnpGroupFreq.wild.value][1]
+        mut_freq = freq_dict[SnpGroup.mut.value][0]
+        wild_freq = freq_dict[SnpGroup.wild.value][1]
     if np.isinf(mut_freq) or np.isinf(wild_freq):
         return None
     else:
@@ -296,7 +300,7 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
     return varscore_df
 
 
-def score_plot(score_file, method):
+def score_plot(score_file, method, plot_title="", chr_size=""):
     out_prefix = score_file.with_suffix('.plot')
     if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density']:
         out_plot = score_file.with_suffix('.plot.jpg')
@@ -308,7 +312,9 @@ def score_plot(score_file, method):
     cmd = (f'Rscript {SNP_SCORE_PLOT} '
            f'--input {score_file} '
            f'--output {out_prefix} '
-           f'--plot_type {method}')
+           f'--plot_type {method} '
+           f'--title {plot_title} '
+           f'--chr_size {chr_size}')
     if not out_plot.exists():
         return cmd
     else:

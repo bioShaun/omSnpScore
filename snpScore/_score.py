@@ -1,10 +1,12 @@
 # TODO: score system involve background and parent
 
 import attr
+import time
 import numpy as np
 import pandas as pd
 from loguru import logger
 from pathlib import Path
+from datetime import datetime
 from collections import OrderedDict
 from ._var import REF_FREQ, QTLSEQR_PLOT
 from ._var import SnpGroup, MUT_NAME, WILD_NAME
@@ -23,6 +25,7 @@ from ._utils import valid_grp
 class snpScoreBox:
     alt_freq_df = attr.ib()
     outdir = attr.ib(converter=Path)
+    chr_size = attr.ib(converter=str)
     grp_list = attr.ib(factory=list)
     method_list = attr.ib(factory=list)
     min_depth = attr.ib(default=5, converter=int)
@@ -36,6 +39,7 @@ class snpScoreBox:
     wild_alt_exp = attr.ib(
         default=None, converter=lambda x: x if x is None else float(x))
     vcf_ann_file = attr.ib(default=None)
+    save_mem = attr.ib(default=True)
 
     def __attrs_post_init__(self):
         self._freq_dict = OrderedDict()
@@ -170,6 +174,8 @@ class snpScoreBox:
                     left_on=['Chrom', 'Pos', 'Alt'],
                     right_on=['#CHROM', 'POS', 'ALT'],
                     how='left')
+                if self.save_mem:
+                    self._snp_ann_df = None
                 self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
                                              inplace=True,
                                              axis=1)
@@ -231,15 +237,21 @@ class snpScoreBox:
                 self.score_df.to_csv(self.score_file)
             else:
                 self.score_df = pd.read_csv(self.score_file)
-            self.plot_cmds.append(score_plot(self.score_file, method))
+            self.plot_cmds.append(
+                score_plot(self.score_file, method,
+                           f'{score_name}.{method_name}', self.chr_size))
             self.score_ann_file = self.outdir / \
                 f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
                 self.score_ann_df.to_csv(
                     self.score_ann_file, index=False)
+                if self.save_mem:
+                    self._snp_window_ann_df = None
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
-        self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
-        self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))
+        # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
+        self.plot_cmds.append(score_plot(
+            self.alt_filter_freq_file, 'density',
+            self.group_label, self.chr_size))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         return self.plot_cmds
 
@@ -248,13 +260,14 @@ class snpScoreBox:
 class snpAnnBox(snpScoreBox):
 
     target_bed = attr.ib(default=None)
-    target_name = attr.ib(default='target')
 
     @property
     def alt_freq_dis_df(self):
+        time_now_str = '-'.join(str(datetime.now()).split())
+        target_name = f'target.{time_now_str}'
         if self._alt_freq_dis_df is None:
             self._alt_freq_dis_df = snp_freq_by_window(
-                self.alt_freq_df, self.target_name,
+                self.alt_freq_df, target_name,
                 self.target_bed, self.outdir)
         return self._alt_freq_dis_df
 

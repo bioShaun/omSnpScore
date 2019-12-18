@@ -6,7 +6,7 @@ from pathlib import Path
 from snpScore import tableFromVcf, sample_and_group
 from snpScore import tableFromSelectTable
 from snpScore import snpTable, async_batch_sh_jobs
-from snpScore import snpScoreBox, qtlSeqr
+from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 
 
 @click.command()
@@ -63,6 +63,10 @@ from snpScore import snpScoreBox, qtlSeqr
               help='snp annotation file.',
               type=click.Path(exists=True, dir_okay=False),
               default=None)
+@click.option('--chr_size',
+              help='chr size file, default is chr size of bread wheat.',
+              type=click.Path(exists=True, dir_okay=False),
+              default=CHR_SIZE)
 @click.option('--vcf_split_dir',
               help=('Directory to save snp pickle file for each sample.'
                     'Default is outdir/pickle'),
@@ -130,7 +134,7 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_d
          mutant_parent, wild_parent, background, mutant_alt_exp, wild_alt_exp,
          min_depth, snp_number_window, snp_number_step, vcf_ann_file,
          qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore, snp_index, est,
-         ed, p_ref_freq, background_ref_freq):
+         ed, p_ref_freq, background_ref_freq, chr_size):
     if vcf_file or vcf_table:
         vcf_dir = list(vcf_dir)
         if vcf_split_dir is None:
@@ -180,6 +184,7 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_d
                                grp_list=group_list,
                                method_list=snp_score_methods,
                                outdir=outdir,
+                               chr_size=chr_size,
                                min_depth=min_depth,
                                snp_number_window=snp_number_window,
                                snp_number_step=snp_number_step,
@@ -188,7 +193,8 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_d
                                background_ref_freq=background_ref_freq,
                                mutant_alt_exp=mutant_alt_exp,
                                wild_alt_exp=wild_alt_exp,
-                               vcf_ann_file=vcf_ann_file)
+                               vcf_ann_file=vcf_ann_file,
+                               save_mem=False)
     run_jobs.extend(snpscore_obj.score_jobs)
     logger.info('Launch snpScore jobs...')
     async_batch_sh_jobs(run_jobs, thread=thread)
