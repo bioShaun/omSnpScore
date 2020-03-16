@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from collections import OrderedDict
 from ._var import REF_FREQ, QTLSEQR_PLOT
-from ._var import SnpGroup, MUT_NAME, WILD_NAME
+from ._var import SnpGroup, MUT_NAME, WILD_NAME, SnpGroupFreq
 from ._utils import freq_accordance
 from ._utils import alt_ref_cut
 from ._utils import filter_snp
@@ -235,6 +235,10 @@ class snpScoreBox:
                 if self.score_df is None:
                     continue
                 self.score_df.to_csv(self.score_file)
+                if method == 'snp_index':
+                    self.score_df.drop(
+                        [SnpGroupFreq.mut.value, SnpGroupFreq.wild.value],
+                        axis=1, inplace=True)
             else:
                 self.score_df = pd.read_csv(self.score_file)
             self.plot_cmds.append(

@@ -49,7 +49,7 @@ wheat_cols <- c("#377EB8", "#4DAF4A", "#FF7F00")
 
 snp_index_plot <- function(each_chr) {
   
-  chrom_df_1 <- filter(m_snp_index_df, Chrom == each_chr & variable == 'mutant')
+  chrom_df_1 <- filter(m_snp_index_df, Chrom == each_chr & variable == 'mutant.FREQ')
   p1 <- ggplot(chrom_df_1, aes(start_m, value, color=variable)) +
     geom_point(alpha=0.5) + geom_smooth(color=line_col,method = "loess",alpha = 0.5,span = 0.2) +
     theme_onmath() +
@@ -58,7 +58,7 @@ snp_index_plot <- function(each_chr) {
     scale_color_manual(values = point_cols) +
     guides(color=F) + xlab("") + ylab("") + ggtitle('mutant')
   
-  chrom_df_2 <- filter(m_snp_index_df, Chrom == each_chr & variable == 'wild')
+  chrom_df_2 <- filter(m_snp_index_df, Chrom == each_chr & variable == 'wild.FREQ')
   p2 <- ggplot(chrom_df_2, aes(start_m, value, color=variable)) +
     geom_point(alpha=0.5,colour=point_cols[2]) + geom_smooth(color=line_col,method = "loess",alpha = 0.5,span = 0.2) +
     theme_onmath() +

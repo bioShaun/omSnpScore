@@ -295,8 +295,9 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
                                            if x >= OFFSET else OFFSET)
         varscore_df.loc[:, 'snp_score'] = varscore_df.apply(log_varscore,
                                                             axis=1)
-    varscore_df.drop([SnpGroupFreq.mut.value, SnpGroupFreq.wild.value],
-                     axis=1, inplace=True)
+    if method != 'snp_index':
+        varscore_df.drop([SnpGroupFreq.mut.value, SnpGroupFreq.wild.value],
+                         axis=1, inplace=True)
     return varscore_df
 
 
