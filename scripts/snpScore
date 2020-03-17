@@ -111,6 +111,8 @@ def main(parameters,
                                vcf_ann_file=vcf_ann_file)
     run_jobs.extend(snpscore_obj.score_jobs)
     logger.info('Launch snpScore jobs...')
+    # test
+    #print(run_jobs)
     async_batch_sh_jobs(run_jobs, thread=4)
     logger.info('The End.')
     print(full_outdir)
