@@ -99,6 +99,7 @@ class snpTable:
         self._grp_dep_df = None
         self._grp_alt_dep_df = None
         self._alt_freq_df = None
+        self._grp_ref_dep_df = None
         self.alt_freq_file = self.out_dir / 'snp.freq.csv'
         self._qtlseqr_snp_table = self.out_dir / 'qtlseqr.csv'
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -169,21 +170,25 @@ class snpTable:
 
     @property
     def grp_ref_dep_df(self):
-        return self.grp_dep_df - self.grp_alt_dep_df
+        if self._grp_ref_dep_df is None:
+            self._grp_ref_dep_df = self.grp_dep_df - self.grp_alt_dep_df
+            self._grp_ref_dep_df = self._grp_ref_dep_df.astype('int')
+        return self._grp_ref_dep_df
+
 
     @property
     def grp_ad_df(self):
-        grp_ad_df = self.grp_dep_df.copy()
-        cols = grp_ad_df.columns
-        for col_i in cols:
-            col_i_ad = self.grp_ref_dep_df.loc[
-                :, col_i].astype('int').astype('str').str.cat(
-                self.grp_alt_dep_df.loc[
-                    :, col_i].astype('int').astype('str'), sep=','
-            )
-            grp_ad_df.loc[:, f'{col_i}.AD'] = col_i_ad
-        grp_ad_df.drop(cols, axis=1, inplace=True)
+        self.grp_ref_dep_df.columns = [
+            f'{col_i}.REF.AD' for col_i in self.grp_ref_dep_df.columns
+        ]
+        self.grp_alt_dep_df.columns = [
+            f'{col_i}.ALT.AD' for col_i in self.grp_alt_dep_df.columns
+        ]
+        grp_ad_df = self.grp_ref_dep_df.merge(self.grp_alt_dep_df,
+                                              left_index=True,
+                                              right_index=True)
         return grp_ad_df
+
 
     @property
     def alt_freq_df(self):
