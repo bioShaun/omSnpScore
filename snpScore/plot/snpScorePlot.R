@@ -32,6 +32,11 @@ p <- add_argument(
   p, '--chr_size',
   help = 'chr size file',
   default=NULL)
+
+p <- add_argument(
+    p, "--web", 
+    help = "if plot for web server, do not output pdf file to save time", 
+    flag=TRUE)  
 argv <- parse_args(p)
 
 # var_table <- 'genome.window.w1000000.s500000.bed.var.score.txt'
@@ -43,7 +48,7 @@ output_prefix <- argv$output
 plot_type <- argv$plot_type
 plot_title <- argv$title
 chr.size <- argv$chr_size
-
+is_web <- argv$web
 
 wheat_cols <- c("#377EB8", "#4DAF4A", "#FF7F00")
 
@@ -86,10 +91,13 @@ snp_index_plot <- function(each_chr) {
          plot=p,
          width = 8,
          height = 6)
+  if (! is_web ) {
   ggsave(filename = paste(plot_name, 'pdf', sep = '.'),
          plot=p,
          width = 12,
          height = 10)
+
+  }
 }
 
 
@@ -102,10 +110,13 @@ if (plot_type == 'density') {
          col=c("darkgreen", "yellow", "red"),
          file="jpg", dpi=300, out.name = output_prefix,
          plot.title=plot_title, chr.size=chr.size)
-  omsCMplot(plot_data,plot.type="d",bin.size=1e6,
-         col=c("darkgreen", "yellow", "red"),
-         file="pdf", dpi=300, out.name = output_prefix,
-         plot.title=plot_title, chr.size=chr.size) 
+  if ( ! is_web ) {
+    omsCMplot(plot_data,plot.type="d",bin.size=1e6,
+            col=c("darkgreen", "yellow", "red"),
+            file="pdf", dpi=300, out.name = output_prefix,
+            plot.title=plot_title, chr.size=chr.size) 
+  }
+
 } else if (plot_type == 'snp_index') {
   
   if ( ! dir.exists(output_prefix)) {
@@ -137,9 +148,12 @@ if (plot_type == 'density') {
   omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL, col = wheat_cols,
              chr.den.col=NULL,file="jpg",memo="test",dpi=300,ylab = "Score",
              out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title, )
-  omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL, col = wheat_cols,
-             chr.den.col=NULL,file="pdf",memo="test",dpi=300,ylab = "Score",
-             out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
+  if ( ! is_web ) {
+    omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL, col = wheat_cols,
+                chr.den.col=NULL,file="pdf",memo="test",dpi=300,ylab = "Score",
+                out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
+  }
+
 }
 
 

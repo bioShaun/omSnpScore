@@ -6,6 +6,7 @@ import pandas as pd
 from io import StringIO
 from loguru import logger
 from decimal import Decimal, getcontext
+from pathlib import Path
 from functools import reduce
 from pybedtools import BedTool
 from ._var import GROUPS, REF_FREQ, ALT_FREQ, OFFSET
@@ -259,7 +260,8 @@ def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
 
 def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
     stats_cols = [
-        'Chrom', 'Start', 'End', SnpGroupFreq.mut.value, SnpGroupFreq.wild.value
+        'Chrom', 'Start', 'End', SnpGroupFreq.mut.value,
+        SnpGroupFreq.wild.value
     ]
     stats_df = intersect_df.loc[:, stats_cols]
     varscore_size_df = stats_df.groupby(['Chrom', 'Start', 'End']).size()
@@ -296,11 +298,16 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
         varscore_df.loc[:, 'snp_score'] = varscore_df.apply(log_varscore,
                                                             axis=1)
     varscore_df.drop([SnpGroupFreq.mut.value, SnpGroupFreq.wild.value],
-                     axis=1, inplace=True)
+                     axis=1,
+                     inplace=True)
     return varscore_df
 
 
-def score_plot(score_file, method, plot_title="", chr_size=""):
+def score_plot(score_file,
+               method,
+               plot_title="",
+               chr_size="",
+               platform="local"):
     out_prefix = score_file.with_suffix('.plot')
     if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density']:
         out_plot = score_file.with_suffix('.plot.jpg')
@@ -315,6 +322,8 @@ def score_plot(score_file, method, plot_title="", chr_size=""):
            f'--plot_type {method} '
            f'--title {plot_title} '
            f'--chr_size {chr_size}')
+    if platform == 'web':
+        cmd = f'{cmd} --web'
     if not out_plot.exists():
         return cmd
     else:
@@ -395,3 +404,30 @@ def outdir_suffix_from_params(params):
             group_i_list.append(abbr_sample_id(sample_i_id))
         outdir_suffix_suffix.append('_'.join(group_i_list))
     return '/'.join(outdir_suffix_suffix)
+
+
+def replace_outdir(args, chrom):
+    arg_list = []
+    flag = False
+    for arg_i in args:
+        if flag:
+            arg_i = f'{arg_i}/split/{chrom}'
+            flag = False
+        if arg_i == '-o' or arg_i == '--outdir':
+            flag = True
+        arg_list.append(arg_i)
+    return arg_list
+
+
+def merge_split_file(file_dir, file_pattern):
+    pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
+    df_list = []
+    filename = ''
+    for file_i in pattern_file:
+        df_list.append(pd.read_csv(file_i))
+        if not filename:
+            filename = file_i.name
+    outfile = Path(file_dir) / filename
+    df = pd.concat(df_list)
+    df.to_csv(outfile, index=False)
+    return outfile

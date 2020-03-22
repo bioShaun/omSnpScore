@@ -123,3 +123,6 @@ database.yaml
 # test data
 test_dl
 test*
+
+# vscode
+.vscode

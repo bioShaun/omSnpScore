@@ -34,10 +34,10 @@ class snpScoreBox:
     ref_freq = attr.ib(default=REF_FREQ, converter=float)
     p_ref_freq = attr.ib(default=REF_FREQ, converter=float)
     background_ref_freq = attr.ib(default=REF_FREQ, converter=float)
-    mutant_alt_exp = attr.ib(
-        default=None, converter=lambda x: x if x is None else float(x))
-    wild_alt_exp = attr.ib(
-        default=None, converter=lambda x: x if x is None else float(x))
+    mutant_alt_exp = attr.ib(default=None,
+                             converter=lambda x: x if x is None else float(x))
+    wild_alt_exp = attr.ib(default=None,
+                           converter=lambda x: x if x is None else float(x))
     vcf_ann_file = attr.ib(default=None)
     save_mem = attr.ib(default=True)
 
@@ -187,17 +187,16 @@ class snpScoreBox:
                         'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
                         'Variant_Protein_Level'
                     ]
-                    self._snp_window_ann_df = pd.concat([self._snp_window_ann_df, snpeff_anno_df],
-                                                        axis=1)
+                    self._snp_window_ann_df = pd.concat(
+                        [self._snp_window_ann_df, snpeff_anno_df], axis=1)
                     self._snp_window_ann_df.drop('INFO', axis=1, inplace=True)
-                    self._snp_window_ann_df = split_dataframe_rows(self._snp_window_ann_df,
-                                                                   column_selectors=[
-                                                                       'Feature', 'Gene',
-                                                                       'Transcript',
-                                                                       'Variant_DNA_Level',
-                                                                       'Variant_Protein_Level'
-                                                                   ],
-                                                                   row_delimiter='|')
+                    self._snp_window_ann_df = split_dataframe_rows(
+                        self._snp_window_ann_df,
+                        column_selectors=[
+                            'Feature', 'Gene', 'Transcript',
+                            'Variant_DNA_Level', 'Variant_Protein_Level'
+                        ],
+                        row_delimiter='|')
             else:
                 self._snp_window_ann_df = self.alt_freq_dis_df
         return self._snp_window_ann_df
@@ -243,15 +242,14 @@ class snpScoreBox:
             self.score_ann_file = self.outdir / \
                 f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
-                self.score_ann_df.to_csv(
-                    self.score_ann_file, index=False)
+                self.score_ann_df.to_csv(self.score_ann_file, index=False)
                 if self.save_mem:
                     self._snp_window_ann_df = None
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
         # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
-        self.plot_cmds.append(score_plot(
-            self.alt_filter_freq_file, 'density',
-            self.group_label, self.chr_size))
+        self.plot_cmds.append(
+            score_plot(self.alt_filter_freq_file, 'density', self.group_label,
+                       self.chr_size))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         return self.plot_cmds
 
@@ -266,9 +264,10 @@ class snpAnnBox(snpScoreBox):
         time_now_str = '-'.join(str(datetime.now()).split())
         target_name = f'target.{time_now_str}'
         if self._alt_freq_dis_df is None:
-            self._alt_freq_dis_df = snp_freq_by_window(
-                self.alt_freq_df, target_name,
-                self.target_bed, self.outdir)
+            self._alt_freq_dis_df = snp_freq_by_window(self.alt_freq_df,
+                                                       target_name,
+                                                       self.target_bed,
+                                                       self.outdir)
         return self._alt_freq_dis_df
 
 
