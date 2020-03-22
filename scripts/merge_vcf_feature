@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from loguru import logger
 
+ANN_TABLE_COL = ("#CHROM", "POS", "REF", "ALT", "INFO")
 SNP_ID_COL = ('#CHROM', 'POS', 'REF', 'ALT')
 BED_COL = ('#CHROM', 'POS')
 
@@ -15,7 +16,7 @@ def tableList2Df(table_list):
     df_list = list()
     for file_i in table_list:
         logger.info('Read snp table {}...'.format(file_i))
-        df_i = pd.read_csv(file_i, sep='\t')
+        df_i = pd.read_csv(file_i, sep='\t', header=None, names=ANN_TABLE_COL)
         df_list.append(df_i)
     merged_df = pd.concat(df_list)
     return merged_df
@@ -94,6 +95,16 @@ class snpAnnDb:
         self.db_df.to_pickle(self.db)
         self.db_bed_df.to_csv(self.db_bed, sep='\t', index=False, header=False)
 
+    def updateDB(self):
+        if not self.load_db('current'):
+            self.load_db('bak')
+        if self.check_new_db():
+            self.add_new_record()
+            self.backup_db()
+            self.update_db_inf()
+            self.make_bed()
+            self.save_db()
+
 
 @click.command()
 @click.option('--vcf_ann_dir',
@@ -101,14 +112,7 @@ class snpAnnDb:
               required=True)
 def main(vcf_ann_dir):
     vcf_ann_db = snpAnnDb(vcf_ann_dir)
-    if not vcf_ann_db.load_db('current'):
-        vcf_ann_db.load_db('bak')
-    if vcf_ann_db.check_new_db():
-        vcf_ann_db.add_new_record()
-        vcf_ann_db.backup_db()
-        vcf_ann_db.update_db_inf()
-        vcf_ann_db.make_bed()
-        vcf_ann_db.save_db()
+    vcf_ann_db.updateDB()
     logger.info('The End.')
 
 
