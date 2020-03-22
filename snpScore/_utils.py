@@ -431,3 +431,23 @@ def merge_split_file(file_dir, file_pattern):
     df = pd.concat(df_list)
     df.to_csv(outfile, index=False)
     return outfile
+
+
+def gene2pos(gene_bed, genes):
+    gene_bed_df = pd.read_csv(gene_bed,
+                              sep='\t',
+                              header=None,
+                              names=['chrom', 'start', 'end'],
+                              index_col=3)
+    for gene_i in genes:
+        if gene_i in gene_bed_df.index:
+            gene_i_pos = gene_bed_df.loc[gene_i]
+            yield f'{gene_i_pos.chrom}:{gene_i_pos.start}-{gene_i_pos.end}'
+
+
+def printdf(df):
+    col_str = [str(col_i) for col_i in df.columns]
+    print('\t'.join(col_str))
+    for index_i in df.index:
+        line_i = [str(col_i) for col_i in df.loc[index_i]]
+        print('\t'.join(line_i))

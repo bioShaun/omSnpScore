@@ -6,7 +6,7 @@ from loguru import logger
 from pathlib import Path, PurePath
 from datetime import datetime
 from pybedtools import BedTool
-from ._load import snpAnnTable
+from ._load import snpAnnTable, snpAnnTableByChr
 from ._score import snpAnnBox
 
 COL_HEADER_MAP = {'Chr': '#CHROM', 'Pos': 'POS', 'Alt': 'ALT'}
@@ -89,7 +89,8 @@ def snp_ann_pipe(gene_bed,
                  group_list,
                  min_depth,
                  outfmt='table',
-                 logger_file=None):
+                 logger_file=None,
+                 chrom=None):
     init_logger(logger_file)
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -105,13 +106,23 @@ def snp_ann_pipe(gene_bed,
         raise ValueError('one of genes and postion must specified.')
 
     # step2 annotate target region
-    snp_table_obj = snpAnnTable(out_dir=outdir,
-                                table_dirs=vcf_dir,
-                                samples=sample_list,
-                                sample_label=group_list,
-                                min_depth=min_depth,
-                                filter_dp_grp=group_list,
-                                save_table=False)
+    if chrom is None:
+        snp_table_obj = snpAnnTable(out_dir=outdir,
+                                    table_dirs=vcf_dir,
+                                    samples=sample_list,
+                                    sample_label=group_list,
+                                    min_depth=min_depth,
+                                    filter_dp_grp=group_list,
+                                    save_table=False)
+    else:
+        snp_table_obj = snpAnnTableByChr(out_dir=outdir,
+                                         table_dirs=vcf_dir,
+                                         samples=sample_list,
+                                         sample_label=group_list,
+                                         min_depth=min_depth,
+                                         filter_dp_grp=group_list,
+                                         save_table=False,
+                                         chrom=chrom)
 
     snp_inf_df = snp_table_obj.alt_freq_df
     selected_cols = [each for each in snp_inf_df.columns if 'FREQ' not in each]
@@ -130,7 +141,8 @@ def snp_ann_pipe(gene_bed,
     flat_target_snp_ann_df.drop(['Start', 'End'], axis=1, inplace=True)
     flat_target_snp_ann_df.fillna(0, inplace=True)
     order_cols = [
-        each for each in flat_target_snp_ann_df.columns if each not in ad_cols]
+        each for each in flat_target_snp_ann_df.columns if each not in ad_cols
+    ]
     order_cols.extend(ad_cols)
     flat_target_snp_ann_df = flat_target_snp_ann_df.loc[:, order_cols]
     if genes:
@@ -143,6 +155,8 @@ def snp_ann_pipe(gene_bed,
 
     if outfmt == 'string':
         printdf(flat_target_snp_ann_df)
+    elif outfmt == 'df':
+        return flat_target_snp_ann_df
     else:
         if not flat_target_snp_ann_df.empty:
             target_region_snp_inf_file = outdir / 'target_region_snp_inf.txt'

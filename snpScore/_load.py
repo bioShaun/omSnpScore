@@ -115,7 +115,6 @@ class snpTable:
     min_depth = attr.ib(default=5, converter=int)
     filter_dp_grp = attr.ib(default=[MUT_NAME, WILD_NAME])
     save_table = attr.ib(default=True)
-    chrom = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         self._ad_df = None
@@ -163,8 +162,6 @@ class snpTable:
                     table_i_df = pd.read_hdf(table_i)
                 else:
                     raise UnsupportedFormat
-                if self.chrom is not None:
-                    table_i_df = table_i_df.loc[[self.chrom]]
                 self.ad_dfs.append(table_i_df)
             logger.info('Concatinating tables...')
             self._ad_df = reduce(
@@ -260,6 +257,8 @@ class snpTable:
 
 @attr.s
 class snpTableMP(snpTable):
+    chrom = attr.ib(default=None)
+
     @property
     def snp_table_files(self):
         table_file_list = []
@@ -286,6 +285,27 @@ class snpTableMP(snpTable):
 
 @attr.s
 class snpAnnTable(snpTable):
+    @property
+    def grp_dep_df(self):
+        if self._grp_dep_df is None:
+            self.dep_df = self.ad_df.loc[:, 'dep_count'].copy()
+            self.dep_df.columns = self.sample_label
+            logger.info('Group depth reads...')
+            self._grp_dep_df = self.dep_df.T.groupby(level=0).agg('sum').T
+        return self._grp_dep_df
+
+    @property
+    def grp_alt_dep_df(self):
+        if self._grp_alt_dep_df is None:
+            logger.info('Group alt reads...')
+            self.alt_df = self.ad_df.loc[:, 'alt_count'].copy()
+            self.alt_df.columns = self.sample_label
+            self._grp_alt_dep_df = self.alt_df.T.groupby(level=0).agg('sum').T
+        return self._grp_alt_dep_df
+
+
+@attr.s
+class snpAnnTableByChr(snpTableMP):
     @property
     def grp_dep_df(self):
         if self._grp_dep_df is None:
