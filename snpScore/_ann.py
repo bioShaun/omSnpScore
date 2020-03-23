@@ -134,7 +134,8 @@ def snp_ann_pipe(gene_bed,
                             outdir=outdir,
                             min_depth=0,
                             vcf_ann_file=snp_ann_pkl,
-                            target_bed=target_region_bed)
+                            target_bed=target_region_bed,
+                            chr_size='')
 
     # step3 filter annotation
     flat_target_snp_ann_df = snp_ann_obj.snp_window_ann_df.copy()

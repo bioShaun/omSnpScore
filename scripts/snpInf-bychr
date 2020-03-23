@@ -69,6 +69,21 @@ def main(gene_bed, vcf_dir, vcf_ann_dir, outdir, parameters, logger_file,
                          logger_file=logger_file,
                          chrom=chrom))
     ann_df = pd.concat(ann_dfs)
+    drop_cols = []
+    for grp_i in group_list:
+        ad = f'{grp_i}:AD'
+        ref_ad = f'{grp_i}.REF.AD'
+        alt_ad = f'{grp_i}.ALT.AD'
+        alt_freq = f'{grp_i}:ALT-FREQ'
+        ann_df.loc[:, ad] = ann_df.loc[:, ref_ad].astype(str).str.cat(
+            ann_df.loc[:, alt_ad].astype(str), sep=",")
+        ann_df.loc[:, alt_freq] = (
+            ann_df.loc[:, alt_ad] /
+            (ann_df.loc[:, alt_ad] + ann_df.loc[:, ref_ad]))
+        ann_df.loc[:, alt_freq] = ann_df.loc[:, alt_freq].fillna(0)
+        ann_df.loc[:, alt_freq] = ann_df.loc[:, alt_freq].round(3)
+        drop_cols.extend([ref_ad, alt_ad])
+    ann_df.drop(drop_cols, axis=1, inplace=True)
     printdf(ann_df)
 
 
