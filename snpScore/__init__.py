@@ -12,5 +12,7 @@ from ._utils import outdir_suffix_from_params
 from ._utils import replace_outdir
 from ._utils import score_plot
 from ._utils import merge_split_file
+from ._utils import gene2pos
+from ._utils import printdf
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE
