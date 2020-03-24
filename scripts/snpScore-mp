@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+
+import sys
+import json
+import click
+import pandas as pd
+from loguru import logger
+from pathlib import Path
+from snpScore import tableFromVcf, sample_and_group_for_web
+from snpScore import tableFromSelectTable
+from snpScore import snpTable, async_batch_sh_jobs
+from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
+from snpScore import outdir_suffix_from_params
+from snpScore import merge_split_file, score_plot, wrap_param_arg
+
+BY_CHR_BIN = "snpScore-bychr"
+
+
+@click.command()
+@click.option('-p',
+              '--parameters',
+              help='snpScore parameters json string.',
+              required=True,
+              type=click.STRING)
+@click.option('--vcf_dir',
+              help=('vcf table directory, can be more than one '
+                    '[--vcf_dir dir1 --vcf_dir dir2].'),
+              type=click.Path(exists=True, file_okay=False),
+              multiple=True)
+@click.option('--vcf_ann_dir',
+              help='snp annotation dir.',
+              required=True,
+              type=click.Path())
+@click.option('--chr_size',
+              help='chr size file, default is chr size of bread wheat.',
+              type=click.Path(exists=True, dir_okay=False),
+              default=CHR_SIZE)
+@click.option('-o',
+              '--outdir',
+              help='results directory.',
+              required=True,
+              type=click.Path())
+@click.option('-t',
+              '--thread',
+              help='paralle number',
+              default=32,
+              type=click.INT)
+def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
+
+    chr_size_df = pd.read_csv(CHR_SIZE, sep='\t', header=None, index_col=0)
+    cmd_list = []
+
+    parameters_obj = json.loads(parameters)
+    sample_list, group_list = sample_and_group_for_web(parameters_obj)
+
+    outdir = Path(outdir)
+    outdir_suffix = outdir_suffix_from_params(parameters_obj)
+    outdir = outdir.resolve()
+    full_outdir = outdir / outdir_suffix
+    results_dir = full_outdir / 'results'
+
+    for chr_i in chr_size_df.index:
+        param_wrap_arg = wrap_param_arg(sys.argv[1:])
+        arg_line = ' '.join(param_wrap_arg)
+        cmd_i = f'{BY_CHR_BIN} {arg_line} --chrom {chr_i}'
+        cmd_list.append(cmd_i)
+    logger.info('Calculating score ...')
+    async_batch_sh_jobs(cmd_list, thread=thread)
+    logger.info('Ploting score ...')
+    snp_score_methods = []
+    snp_score_methods.append('var')
+    """ if snp_index:
+        snp_score_methods.append('snp_index')
+    if est:
+        snp_score_methods.extend(['est_mut_alt', 'est_mut_ref']) """
+    plot_cmd = []
+    for method in snp_score_methods:
+        snp_score_file_pattern = f'*{method}.score.csv'
+        snp_score_file = merge_split_file(results_dir, snp_score_file_pattern)
+        snp_score_ann_file_pattern = f'*{method}.score.ann.csv'
+        snp_score_ann_file = merge_split_file(results_dir,
+                                              snp_score_ann_file_pattern)
+        plot_cmd.append(
+            score_plot(snp_score_file, method, snp_score_file.stem, CHR_SIZE,
+                       'web'))
+    snp_freq_file = merge_split_file(results_dir, "*.snp.freq.csv")
+    plot_cmd.append(
+        score_plot(snp_freq_file, 'density', snp_freq_file.stem, CHR_SIZE,
+                   'web'))
+    async_batch_sh_jobs(plot_cmd, thread=thread)
+    logger.info('Fin.')
+    print(full_outdir)
+
+
+if __name__ == '__main__':
+    main()

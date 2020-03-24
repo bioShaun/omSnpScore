@@ -419,6 +419,17 @@ def replace_outdir(args, chrom):
     return arg_list
 
 
+def wrap_param_arg(args):
+    flag = False
+    for arg_i in args:
+        if flag:
+            arg_i = f"'{arg_i}'"
+            flag = False
+        if arg_i == '-p' or arg_i == '--parameters':
+            flag = True
+        yield arg_i
+
+
 def merge_split_file(file_dir, file_pattern):
     pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
     df_list = []
