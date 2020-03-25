@@ -468,7 +468,7 @@ def printdf(df):
 
 def freq2qtlseqr(snpfreq):
     snpfreq = Path(snpfreq)
-    snpfreq_df = pd.read_csv(snpfreq, sep='\t')
+    snpfreq_df = pd.read_csv(snpfreq)
 
     def rename_col(col_i):
         pos_map = {'Chr': 'CHROM', 'Pos': 'POS', 'Alt': 'ALT'}
