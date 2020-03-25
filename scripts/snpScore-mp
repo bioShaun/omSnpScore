@@ -82,10 +82,13 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
     plot_cmd = []
     for method in snp_score_methods:
         snp_score_file_pattern = f'*{method}.score.csv'
-        snp_score_file = merge_split_file(results_dir, snp_score_file_pattern)
+        snp_score_file = merge_split_file(results_dir,
+                                          snp_score_file_pattern,
+                                          sortby=["Chrom", "Start"])
         snp_score_ann_file_pattern = f'*{method}.score.ann.csv'
         snp_score_ann_file = merge_split_file(results_dir,
-                                              snp_score_ann_file_pattern)
+                                              snp_score_ann_file_pattern,
+                                              sortby=["Chrom", "Start"])
         plot_cmd.append(
             score_plot(snp_score_file, method, snp_score_file.stem, CHR_SIZE,
                        'web'))

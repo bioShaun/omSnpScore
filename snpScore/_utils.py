@@ -430,7 +430,7 @@ def wrap_param_arg(args):
         yield arg_i
 
 
-def merge_split_file(file_dir, file_pattern):
+def merge_split_file(file_dir, file_pattern, sortby=None):
     pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
     df_list = []
     filename = ''
@@ -440,6 +440,8 @@ def merge_split_file(file_dir, file_pattern):
             filename = file_i.name
     outfile = Path(file_dir) / filename
     df = pd.concat(df_list)
+    if sortby:
+        df.sort_values(sortby, inplace=True)
     df.to_csv(outfile, index=False)
     return outfile
 
