@@ -462,3 +462,20 @@ def printdf(df):
     for index_i in df.index:
         line_i = [str(col_i) for col_i in df.loc[index_i]]
         print('\t'.join(line_i))
+
+
+def freq2qtlseqr(snpfreq):
+    snpfreq = Path(snpfreq)
+    snpfreq_df = pd.read_csv(snpfreq, sep='\t')
+
+    def rename_col(col_i):
+        pos_map = {'Chr': 'CHROM', 'Pos': 'POS', 'Alt': 'ALT'}
+        if pos_map.get(col_i):
+            return pos_map[col_i]
+        else:
+            return re.sub(r"(\w+).(\w+).AD", r"AD_\2.\1", col_i)
+
+    snpfreq_df.columns = [rename_col(col_i) for col_i in snpfreq_df.columns]
+    qtlseqr_table = snpfreq.with_suffix('.qtlseqr.csv')
+    snpfreq_df.to_csv(qtlseqr_table, index=False)
+    return qtlseqr_table

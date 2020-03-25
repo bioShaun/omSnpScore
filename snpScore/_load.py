@@ -241,6 +241,7 @@ class snpTable:
 
     @property
     def qtlseqr_snp_table(self):
+        alt_freq_df = self.alt_freq_df
         if not self._qtlseqr_snp_table.is_file():
             ref_df = self.grp_ref_dep_df.copy()
             alt_df = self.grp_alt_dep_df.copy()

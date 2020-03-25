@@ -70,7 +70,7 @@ low_bulk <- str_split(argv$low_bulk, ',')[[1]]
 ref_freq <- argv$ref_freq
 min_sample_dp <- argv$min_sample_dp
 pop_stru <- argv$pop_stru
-out_dir <- argv$out_dir
+prefix <- argv$out_dir
 qtlseqr_flag <- argv$qtlseqr
 ed_flag <- argv$ed
 ed_plot_flag <- argv$ed_plot
@@ -78,37 +78,32 @@ ed_plot_flag <- argv$ed_plot
 plot_cols <- brewer.pal(9, 'Set1')
 wheat_cols <- c(plot_cols[2], plot_cols[3], plot_cols[5])
 
-
-
-
 df <- importFromTable(file=input_table, highBulk = high_bulk, lowBulk = low_bulk)
-df_filt <- filterSNPs(SNPset=df, refAlleleFreq = ref_freq, minSampleDepth = min_sample_dp)
+df_filt <- filterSNPs(SNPset=df, minSampleDepth = min_sample_dp)
 chrom_num <- length(unique(df_filt$CHROM))
 
 table_name <- c()
 
 if (qtlseqr_flag) {
-    filter_stat = 1 - 2*ref_freq
     table_name <- c('qtlseqr', as.integer(window), pop_stru)
-    outname <- paste('qtlSeqr', as.integer(window), ref_freq, min_sample_dp, pop_stru, sep='.')
-    out_prefix <- file.path(out_dir, outname)
+    out_prefix <- paste(prefix, 'qtlSeqr', sep='.')
     df_filt <- runGprimeAnalysis(SNPset = df_filt, windowSize = window, outlierFilter = "deltaSNP")
-    df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50, filter=filter_stat)
+    df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50, filter=NULL)
     png(paste(out_prefix, 'deltaSNP.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
     print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
     dev.off()
 
-    pdf(paste(out_prefix, 'deltaSNP.pdf', sep='.'), width=4 * chrom_num, height=6)
-    print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
-    dev.off()
+    #pdf(paste(out_prefix, 'deltaSNP.pdf', sep='.'), width=4 * chrom_num, height=6)
+    #print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
+    #dev.off()
 
     png(paste(out_prefix, 'Gprime.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
     print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
     dev.off()
 
-    pdf(paste(out_prefix, 'Gprime.pdf', sep='.'), width=4 * chrom_num, height=6)
-    print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
-    dev.off()
+    #pdf(paste(out_prefix, 'Gprime.pdf', sep='.'), width=4 * chrom_num, height=6)
+    #print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
+    #dev.off()
 
     res <- try(getQTLTable(
         SNPset = df_filt,
@@ -179,13 +174,12 @@ if (ed_flag) {
         abline(v=(breaks[1:length(breaks)-1]+2), col="grey")
         mtext(unique(plot.df$CHROM[!is.na(plot.df$CHROM)]), at = labelpos, side=1, cex=.5)
     }
-    outname <- paste('ED', ref_freq, min_sample_dp, sep='.')
-    out_prefix <- file.path(out_dir, outname)
+    out_prefix <- paste(prefix, 'ED', sep='.')
     plot_width <- length(chrs) * 0.1 + 8
     save_general_plot(ed_plot(), out_prefix, plot_type = 'png', width = plot_width)
-    save_general_plot(ed_plot(), out_prefix, plot_type = 'pdf', width = plot_width)
+    #save_general_plot(ed_plot(), out_prefix, plot_type = 'pdf', width = plot_width)
 }
-table_name <- c(table_name, ref_freq, min_sample_dp, 'csv')
+table_name <- c(out_prefix, 'csv')
 table_name_flat <- paste(table_name, collapse = '.')
 table_prefix <- file.path(out_dir, table_name_flat)
 write.csv(df_filt, file = table_prefix, quote=F, row.names=F)
