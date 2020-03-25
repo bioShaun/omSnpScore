@@ -113,7 +113,7 @@ if (qtlseqr_flag) {
     ))
     if(inherits(res, "try-error"))
     {
-       print("Can not find significant region using QTLseqr!")
+       #print("Can not find significant region using QTLseqr!")
     }
 } 
 
@@ -122,19 +122,19 @@ if (ed_flag) {
     eu_power <- 4
     df_filt$euc<-sqrt(2 * (df_filt$SNPindex.LOW-df_filt$SNPindex.HIGH)^2)
     chrs <- unique(df_filt$CHROM)
-    cat("Processing each chromosome:\nChr\tSnps\tSpan\n")
+    #cat("Processing each chromosome:\nChr\tSnps\tSpan\n")
     for(chr in chrs) {
         e = df_filt$euc[df_filt$CHROM == chr]^eu_power
         p = df_filt$POS[df_filt$CHROM == chr]
         if(as.integer(length(p)) < 50){
-            cat(chr, " has less than 50 snps (n=", length(p), ")\n", sep="")
+            #cat(chr, " has less than 50 snps (n=", length(p), ")\n", sep="")
             next
         }
         lo <- loess.as(p, e, degree = 1, family = 'symmetric', criterion = 'aicc')
         df_filt$fitted[df_filt$CHROM==chr] <- lo$fitted
         df_filt$unfitted[df_filt$CHROM==chr] <- lo$y
         usespan <- lo$pars$span
-        cat(chr, length(p), round(usespan[1], digits=3), "\n", sep="\t")
+        #cat(chr, length(p), round(usespan[1], digits=3), "\n", sep="\t")
     }    
     breaks <- NULL
     for (row in 1:(nrow(df_filt)-1)){
@@ -181,5 +181,4 @@ if (ed_flag) {
 }
 table_name <- c(out_prefix, 'csv')
 table_name_flat <- paste(table_name, collapse = '.')
-table_prefix <- file.path(out_dir, table_name_flat)
-write.csv(df_filt, file = table_prefix, quote=F, row.names=F)
+write.csv(df_filt, file = table_name_flat, quote=F, row.names=F)
