@@ -65,17 +65,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
                                min_depth=min_depth,
                                chrom=chrom)
 
-    run_jobs = []
-    if input_params.get('qtlseqr') or input_params.get('ed'):
-        qtlseqr_obj = qtlSeqr(input_table=snp_table_obj.qtlseqr_snp_table,
-                              window=input_params.get('qtlseqr_window', 1e7),
-                              ref_freq=ref_freq,
-                              pop_stru=input_params.get('pop_stru', 'RIL'),
-                              min_sample_dp=min_depth,
-                              out_dir=results_dir,
-                              run_qtlseqr=input_params.get('qtlseqr'),
-                              run_ed=input_params.get('ed'))
-        run_jobs.append(qtlseqr_obj.qtlseqr_job)
+
 
     snp_score_methods = []
     snp_score_methods.append('var')

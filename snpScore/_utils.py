@@ -432,18 +432,20 @@ def wrap_param_arg(args):
 
 def merge_split_file(file_dir, file_pattern, sortby=None):
     pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
-    df_list = []
-    filename = ''
+    exist_files = Path(file_dir).glob(f'{file_pattern}')
+    exist_file_name = [file_i.name for file_i in exist_files]
+    df_dict = dict()
     for file_i in pattern_file:
-        df_list.append(pd.read_csv(file_i))
-        if not filename:
-            filename = file_i.name
-    outfile = Path(file_dir) / filename
-    df = pd.concat(df_list)
-    if sortby:
-        df.sort_values(sortby, inplace=True)
-    df.to_csv(outfile, index=False)
-    return outfile
+        #if file_i.name not in exist_file_name:
+        df_dict.setdefault(file_i.name, []).append(pd.read_csv(file_i))
+    for filename_i in df_dict:
+        outfile = Path(file_dir) / filename_i
+        df_list = df_dict[filename_i]
+        df = pd.concat(df_list)
+        if sortby:
+            df.sort_values(sortby, inplace=True)
+        df.to_csv(outfile, index=False)
+        yield outfile
 
 
 def gene2pos(gene_bed, genes):

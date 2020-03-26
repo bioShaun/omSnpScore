@@ -83,41 +83,37 @@ df_filt <- filterSNPs(SNPset=df, minSampleDepth = min_sample_dp)
 chrom_num <- length(unique(df_filt$CHROM))
 
 table_name <- c()
-
-if (qtlseqr_flag) {
-    table_name <- c('qtlseqr', as.integer(window), pop_stru)
-    out_prefix <- paste(prefix, 'qtlSeqr', sep='.')
+prefix_name = basename(prefix)
+deltaSNP_plot <- paste(prefix, 'qtlSeqr.deltaSNP.png', sep='.')
+Gprime_plot <- paste(prefix, 'qtlSeqr.Gprime.png', sep='.')
+qtlseqr_file = paste(prefix, "qtlSeqr.QTLseqr.csv", sep='.')
+if (qtlseqr_flag && (! file.exists(deltaSNP_plot) || ! file.exists(Gprime_plot) || ! file.exists(qtlseqr_file))) {
+    plot_width = 8 + 0.75 * chrom_num
     df_filt <- runGprimeAnalysis(SNPset = df_filt, windowSize = window, outlierFilter = "deltaSNP")
     df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50, filter=NULL)
-    png(paste(out_prefix, 'deltaSNP.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
-    print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
+    png(deltaSNP_plot, width=plot_width, height=6, res=300, unit='in')
+    print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE, xtext=FALSE, plot_title=prefix_name))
     dev.off()
 
     #pdf(paste(out_prefix, 'deltaSNP.pdf', sep='.'), width=4 * chrom_num, height=6)
     #print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
     #dev.off()
 
-    png(paste(out_prefix, 'Gprime.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
-    print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
+    png(Gprime_plot, width=plot_width, height=6, res=300, unit='in')
+    print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01,xtext=FALSE, plot_title=prefix_name))
     dev.off()
 
     #pdf(paste(out_prefix, 'Gprime.pdf', sep='.'), width=4 * chrom_num, height=6)
     #print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
     #dev.off()
-
-    res <- try(getQTLTable(
-        SNPset = df_filt,
-        alpha = 0.1,
-        export = TRUE,
-        fileName = paste(out_prefix, "QTLseqr.csv", sep='.')
-    ))
-    if(inherits(res, "try-error"))
-    {
-       #print("Can not find significant region using QTLseqr!")
-    }
+    write.csv(df_filt, file = qtlseqr_file, quote=F, row.names=F)
 } 
 
-if (ed_flag) {
+
+ed_plot <- paste(prefix, 'ED.png', sep='.')
+ed_table <- paste(prefix, 'ED.csv', sep='.')
+
+if (ed_flag && (! file.exists(ed_plot) || ! file.exists(ed_table)) ){
     table_name <- c(table_name, 'ed')
     eu_power <- 4
     df_filt$euc<-sqrt(2 * (df_filt$SNPindex.LOW-df_filt$SNPindex.HIGH)^2)
@@ -161,7 +157,8 @@ if (ed_flag) {
             ylim=c(min(plot.df$fitted, na.rm=T),
             1.1*max(plot.df$fitted, na.rm=T)), 
             ylab=substitute("ED"^p~ ~"(Loess fit)", list(p=eu_power)), 
-            xaxt='n', xaxs='i', xlab="Chromosome", cex=.6, cex.lab=.8, cex.axis=.8)
+            xaxt='n', xaxs='i', xlab="Chromosome", cex=.6, cex.lab=.8, cex.axis=.8,
+            main=prefix_name)
         abline(v=(breaks[1:length(breaks)-1]+2), col="grey")
         abline(h=cutoff, col='red', lty=2)
         mtext(unique(plot.df$CHROM[!is.na(plot.df$CHROM)]), at = labelpos, side=1, cex=.5)
@@ -174,11 +171,13 @@ if (ed_flag) {
         abline(v=(breaks[1:length(breaks)-1]+2), col="grey")
         mtext(unique(plot.df$CHROM[!is.na(plot.df$CHROM)]), at = labelpos, side=1, cex=.5)
     }
-    out_prefix <- paste(prefix, 'ED', sep='.')
+    out_prefix <- paste(prefix, 'ED', sep='.')    
     plot_width <- length(chrs) * 0.1 + 8
     save_general_plot(ed_plot(), out_prefix, plot_type = 'png', width = plot_width)
     #save_general_plot(ed_plot(), out_prefix, plot_type = 'pdf', width = plot_width)
+    write.csv(df_filt, file = ed_table, quote=F, row.names=F)
 }
-table_name <- c(out_prefix, 'csv')
-table_name_flat <- paste(table_name, collapse = '.')
-write.csv(df_filt, file = table_name_flat, quote=F, row.names=F)
+
+
+
+
