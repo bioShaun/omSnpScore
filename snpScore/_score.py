@@ -1,11 +1,15 @@
+# TODO: score system involve background and parent
+
 import attr
+import time
 import numpy as np
 import pandas as pd
 from loguru import logger
 from pathlib import Path
+from datetime import datetime
 from collections import OrderedDict
-from ._var import REF_FREQ, QTLSEQR_PLOT
-from ._var import MUT_NAME, WILD_NAME
+from ._var import REF_FREQ, QTLSEQR_PLOT, QTLSEQR_PLOT_WEB
+from ._var import SnpGroup, MUT_NAME, WILD_NAME
 from ._utils import freq_accordance
 from ._utils import alt_ref_cut
 from ._utils import filter_snp
@@ -14,23 +18,28 @@ from ._utils import snp_freq_by_window
 from ._utils import cal_score, score_plot
 from ._utils import extract_snpeff_anno
 from ._utils import split_dataframe_rows
+from ._utils import valid_grp
 
 
 @attr.s
 class snpScoreBox:
     alt_freq_df = attr.ib()
     outdir = attr.ib(converter=Path)
+    chr_size = attr.ib(converter=str)
     grp_list = attr.ib(factory=list)
     method_list = attr.ib(factory=list)
-    min_depth = attr.ib(default=5)
-    snp_number_window = attr.ib(default=20)
-    snp_number_step = attr.ib(default=5)
-    ref_freq = attr.ib(default=REF_FREQ)
-    p_ref_freq = attr.ib(default=REF_FREQ)
-    background_ref_freq = attr.ib(default=REF_FREQ)
-    mutant_alt_exp = attr.ib(default=None)
-    wild_alt_exp = attr.ib(default=None)
+    min_depth = attr.ib(default=5, converter=int)
+    snp_number_window = attr.ib(default=20, converter=int)
+    snp_number_step = attr.ib(default=5, converter=int)
+    ref_freq = attr.ib(default=REF_FREQ, converter=float)
+    p_ref_freq = attr.ib(default=REF_FREQ, converter=float)
+    background_ref_freq = attr.ib(default=REF_FREQ, converter=float)
+    mutant_alt_exp = attr.ib(default=None,
+                             converter=lambda x: x if x is None else float(x))
+    wild_alt_exp = attr.ib(default=None,
+                           converter=lambda x: x if x is None else float(x))
     vcf_ann_file = attr.ib(default=None)
+    save_mem = attr.ib(default=True)
 
     def __attrs_post_init__(self):
         self._freq_dict = OrderedDict()
@@ -42,6 +51,7 @@ class snpScoreBox:
         self._alt_freq_dis_df = None
         self._snp_ann_df = None
         self._snp_window_ann_df = None
+        self.valid_grp = valid_grp(self.grp_list)
         if self.ref_freq > 0.5:
             self.ref_freq = 1 - self.ref_freq
 
@@ -67,9 +77,10 @@ class snpScoreBox:
                 self.ref_freq, self.ref_freq, self.p_ref_freq, self.p_ref_freq,
                 self.background_ref_freq
             ]
-            for n, member in enumerate(self.grp_list):
+            for n, snp_group_i in enumerate(SnpGroup.__members__.items()):
+                _, member = snp_group_i
                 ref_cut, alt_cut = alt_ref_cut(alt_freq_list[n], is_ref=True)
-                self._freq_dict.update({member: [ref_cut, alt_cut]})
+                self._freq_dict.update({member.value: [ref_cut, alt_cut]})
         return self._freq_dict
 
     @property
@@ -87,7 +98,7 @@ class snpScoreBox:
     def group_label(self):
         if self._group_label is None:
             group_out_label = []
-            for group_i in self.grp_list:
+            for group_i in self.valid_grp:
                 label_group = [
                     str(each) for each in self.freq_dict[group_i]
                     if not np.isinf(each)
@@ -126,7 +137,7 @@ class snpScoreBox:
             else:
                 logger.info('Filtering snp by freq...')
                 self._alt_filter_freq_df = filter_snp(
-                    self.alt_freq_df, self.freq_dict, self.group_label,
+                    self.alt_freq_df, self.freq_dict,
                     self.alt_filter_freq_file)
         return self._alt_filter_freq_df
 
@@ -156,20 +167,38 @@ class snpScoreBox:
     def snp_window_ann_df(self):
         if self._snp_window_ann_df is None:
             # add snp annotation to snp score region
-            logger.info('Generating snp window annotation...')
-            self._snp_window_ann_df = self.alt_freq_dis_df.merge(
-                self.snp_ann_df,
-                left_on=['Chrom', 'Pos', 'Alt'],
-                right_on=['#CHROM', 'POS', 'ALT'],
-                how='left')
-            self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
-                                         inplace=True,
-                                         axis=1)
-            self._snp_window_ann_df.rename(columns={
-                MUT_NAME: f'{MUT_NAME}_alt_freq',
-                WILD_NAME: f'{WILD_NAME}_alt_freq',
-            },
-                                           inplace=True)
+            if self.vcf_ann_file:
+                logger.info('Generating snp window annotation...')
+                self._snp_window_ann_df = self.alt_freq_dis_df.merge(
+                    self.snp_ann_df,
+                    left_on=['Chrom', 'Pos', 'Alt'],
+                    right_on=['#CHROM', 'POS', 'ALT'],
+                    how='left')
+                if self.save_mem:
+                    self._snp_ann_df = None
+                self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
+                                             inplace=True,
+                                             axis=1)
+                if not self._snp_window_ann_df.empty:
+                    snpeff_anno = list(
+                        self._snp_window_ann_df.INFO.map(extract_snpeff_anno))
+                    snpeff_anno_df = pd.DataFrame(snpeff_anno)
+                    snpeff_anno_df.columns = [
+                        'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+                        'Variant_Protein_Level'
+                    ]
+                    self._snp_window_ann_df = pd.concat(
+                        [self._snp_window_ann_df, snpeff_anno_df], axis=1)
+                    self._snp_window_ann_df.drop('INFO', axis=1, inplace=True)
+                    self._snp_window_ann_df = split_dataframe_rows(
+                        self._snp_window_ann_df,
+                        column_selectors=[
+                            'Feature', 'Gene', 'Transcript',
+                            'Variant_DNA_Level', 'Variant_Protein_Level'
+                        ],
+                        row_delimiter='|')
+            else:
+                self._snp_window_ann_df = self.alt_freq_dis_df
         return self._snp_window_ann_df
 
     @property
@@ -181,23 +210,6 @@ class snpScoreBox:
             left_on=['Chrom', 'Start', 'End'],
             right_on=['Chrom', 'Start', 'End'],
             how='left')
-        snpeff_anno = list(self._score_ann_df.INFO.map(extract_snpeff_anno))
-        snpeff_anno_df = pd.DataFrame(snpeff_anno)
-        snpeff_anno_df.columns = [
-            'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
-            'Variant_Protein_Level'
-        ]
-        self._score_ann_df = pd.concat([self._score_ann_df, snpeff_anno_df],
-                                       axis=1)
-        self._score_ann_df.drop('INFO', axis=1, inplace=True)
-        self._score_ann_df = split_dataframe_rows(self._score_ann_df,
-                                                  column_selectors=[
-                                                      'Feature', 'Gene',
-                                                      'Transcript',
-                                                      'Variant_DNA_Level',
-                                                      'Variant_Protein_Level'
-                                                  ],
-                                                  row_delimiter='|')
         return self._score_ann_df
 
     @property
@@ -224,17 +236,39 @@ class snpScoreBox:
                 self.score_df.to_csv(self.score_file)
             else:
                 self.score_df = pd.read_csv(self.score_file)
-            self.plot_cmds.append(score_plot(self.score_file, method))
+            self.plot_cmds.append(
+                score_plot(self.score_file, method,
+                           f'{score_name}.{method_name}', self.chr_size))
             self.score_ann_file = self.outdir / \
                 f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
-                if self.vcf_ann_file:
-                    self.score_ann_df.to_csv(self.score_ann_file, index=False)
+                self.score_ann_df.to_csv(self.score_ann_file, index=False)
+                if self.save_mem:
+                    self._snp_window_ann_df = None
         self.grp_alt_freq_file = self.outdir / 'snp.freq.csv'
-        self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
-        self.plot_cmds.append(score_plot(self.alt_filter_freq_file, 'density'))
+        # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
+        self.plot_cmds.append(
+            score_plot(self.alt_filter_freq_file, 'density', self.group_label,
+                       self.chr_size))
         self.plot_cmds = list(filter(None, self.plot_cmds))
         return self.plot_cmds
+
+
+@attr.s
+class snpAnnBox(snpScoreBox):
+
+    target_bed = attr.ib(default=None)
+
+    @property
+    def alt_freq_dis_df(self):
+        time_now_str = '-'.join(str(datetime.now()).split())
+        target_name = f'target.{time_now_str}'
+        if self._alt_freq_dis_df is None:
+            self._alt_freq_dis_df = snp_freq_by_window(self.alt_freq_df,
+                                                       target_name,
+                                                       self.target_bed,
+                                                       self.outdir)
+        return self._alt_freq_dis_df
 
 
 @attr.s
@@ -244,10 +278,11 @@ class qtlSeqr:
     out_dir = attr.ib(converter=Path)
     run_qtlseqr = attr.ib(factory=bool)
     run_ed = attr.ib(factory=bool)
-    window = attr.ib(default=1e7)
-    ref_freq = attr.ib(default=REF_FREQ)
+    window = attr.ib(default=1e7, converter=int)
+    ref_freq = attr.ib(default=REF_FREQ, converter=float)
     pop_stru = attr.ib(default='RIL')
-    min_sample_dp = attr.ib(default=5)
+    min_sample_dp = attr.ib(default=5, converter=int)
+    web = attr.ib(default=False)
 
     @property
     def qtlseqr_job(self):
@@ -256,8 +291,14 @@ class qtlSeqr:
             cmd_flag += '--qtlseqr '
         if self.run_ed:
             cmd_flag += '--ed '
+        if not cmd_flag:
+            return None
         logger.info('Generating QTLseqr command...')
-        cmd_line = (f'Rscript {QTLSEQR_PLOT} '
+        if self.web:
+            plot_r = QTLSEQR_PLOT_WEB
+        else:
+            plot_r = QTLSEQR_PLOT
+        cmd_line = (f'Rscript {plot_r} '
                     f'--input {self.input_table} '
                     f'--high_bulk {MUT_NAME} '
                     f'--low_bulk {WILD_NAME} '

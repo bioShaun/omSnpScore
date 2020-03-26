@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+
+import json
+import click
+import pandas as pd
+from pathlib import PurePath
+from snpScore import gene2pos, printdf
+from snpScore import snp_ann_pipe, sample_and_group_for_web
+
+
+@click.command()
+@click.option('--gene_bed',
+              type=click.Path(exists=True, dir_okay=False),
+              help='gene position bedfile.',
+              required=True)
+@click.option('--vcf_dir',
+              help=('vcf table directory, can be more than one '
+                    '[--vcf_dir dir1 --vcf_dir dir2].'),
+              type=click.Path(exists=True, file_okay=False),
+              multiple=True)
+@click.option('--vcf_ann_dir',
+              help='snp annotation dir.',
+              type=click.Path(exists=True, file_okay=False),
+              required=True)
+@click.option('-p',
+              '--parameters',
+              help='snpScore parameters json string.',
+              required=True,
+              type=click.STRING)
+@click.option('--outdir',
+              type=click.Path(),
+              help='output directory.',
+              required=True)
+@click.option('--logger_file',
+              type=click.Path(dir_okay=False),
+              help='logger file Path.',
+              default=None)
+@click.option('--min_depth', help='minimal snp depth', default=1)
+def main(gene_bed, vcf_dir, vcf_ann_dir, outdir, parameters, logger_file,
+         min_depth):
+    parameters_obj = json.loads(parameters)
+    gene_list = parameters_obj.get('gene_id', '')
+    genes = ','.join(gene_list)
+    chrom = parameters_obj.get('chrom', '')
+    chrom_start = parameters_obj.get('chrom_start', '')
+    chrom_end = parameters_obj.get('chrom_end', '')
+    if chrom:
+        position_list = [f'{chrom}:{chrom_start}-{chrom_end}']
+    else:
+        position_list = gene2pos(gene_bed, gene_list)
+    group_names = parameters_obj.get('group_names')
+    sample_list, group_list = sample_and_group_for_web(parameters_obj)
+
+    ann_dfs = []
+    for position in position_list:
+        chrom = position.split(':')[0]
+        vcf_ann_file = PurePath(vcf_ann_dir) / chrom / 'snp.ann.table.pkl'
+        ann_dfs.append(
+            snp_ann_pipe(gene_bed,
+                         vcf_ann_file,
+                         outdir,
+                         "",
+                         position,
+                         vcf_dir,
+                         sample_list,
+                         group_list,
+                         min_depth,
+                         outfmt='df',
+                         logger_file=logger_file,
+                         chrom=chrom))
+    ann_df = pd.concat(ann_dfs)
+    drop_cols = []
+    for grp_i in group_list:
+        ad = f'{grp_i}:AD'
+        ref_ad = f'{grp_i}.REF.AD'
+        alt_ad = f'{grp_i}.ALT.AD'
+        alt_freq = f'{grp_i}:ALT-FREQ'
+        ann_df.loc[:, ad] = ann_df.loc[:, ref_ad].astype(str).str.cat(
+            ann_df.loc[:, alt_ad].astype(str), sep=",")
+        ann_df.loc[:, alt_freq] = (
+            ann_df.loc[:, alt_ad] /
+            (ann_df.loc[:, alt_ad] + ann_df.loc[:, ref_ad]))
+        ann_df.loc[:, alt_freq] = ann_df.loc[:, alt_freq].fillna(0)
+        ann_df.loc[:, alt_freq] = ann_df.loc[:, alt_freq].round(3)
+        drop_cols.extend([ref_ad, alt_ad])
+    ann_df.drop(drop_cols, axis=1, inplace=True)
+    ann_df = ann_df.reset_index()
+    ann_df.drop('index', axis=1, inplace=True)
+    """ if genes:
+        ann_df = ann_df[ann_df.Gene.isin(gene_list)] """
+    printdf(ann_df)
+
+
+if __name__ == "__main__":
+    main()

@@ -5,7 +5,7 @@ from loguru import logger
 from pathlib import Path
 from snpScore import tableFromVcf, sample_and_group
 from snpScore import tableFromSelectTable
-from snpScore import snpTable, async_batch_sh_jobs
+from snpScore import snpTableMP, async_batch_sh_jobs
 from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 
 
@@ -40,6 +40,10 @@ from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
               help='results directory.',
               required=True,
               type=click.Path())
+@click.option('--chrom',
+              help='chromosome id.',
+              required=True,
+              type=click.STRING)
 @click.option('-t',
               '--thread',
               help='Max thread for this program to use.',
@@ -130,35 +134,21 @@ from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
                     'Defaults to "F2" and assumes "RIL" otherwise.'),
               default='RIL',
               type=click.STRING)
-def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_dir,
-         mutant_parent, wild_parent, background, mutant_alt_exp, wild_alt_exp,
-         min_depth, snp_number_window, snp_number_step, vcf_ann_file,
-         qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore, snp_index, est,
-         ed, p_ref_freq, background_ref_freq, chr_size):
-    if vcf_file or vcf_table:
-        vcf_dir = list(vcf_dir)
-        if vcf_split_dir is None:
-            vcf_split_dir = Path(outdir) / 'pickle'
-        for vcf_i in vcf_file:
-            vcf2tb_obj = tableFromVcf(vcf=vcf_i,
-                                      out_dir=vcf_split_dir,
-                                      thread=thread)
-            vcf2tb_obj.make_table
-            vcf_dir.append(vcf_split_dir)
-        for st_i in vcf_table:
-            vcf2tb_obj = tableFromSelectTable(vcf=st_i,
-                                              out_dir=vcf_split_dir,
-                                              thread=thread)
-            vcf2tb_obj.make_table
-            vcf_dir.append(vcf_split_dir)
+def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
+         vcf_split_dir, mutant_parent, wild_parent, background, mutant_alt_exp,
+         wild_alt_exp, min_depth, snp_number_window, snp_number_step,
+         vcf_ann_file, qtlseqr_window, ref_freq, pop_stru, qtlseqr, varscore,
+         snp_index, est, ed, p_ref_freq, background_ref_freq, chr_size, chrom):
 
     sample_list, group_list = sample_and_group(mutant, wild, mutant_parent,
                                                wild_parent, background)
-    snp_table_obj = snpTable(out_dir=outdir,
-                             table_dirs=vcf_dir,
-                             samples=sample_list,
-                             sample_label=group_list,
-                             min_depth=min_depth)
+    snp_table_obj = snpTableMP(out_dir=outdir,
+                               table_dirs=vcf_dir,
+                               samples=sample_list,
+                               sample_label=group_list,
+                               min_depth=min_depth,
+                               save_table=False,
+                               chrom=chrom)
 
     run_jobs = []
     if qtlseqr or ed:
@@ -170,7 +160,6 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_d
                               out_dir=outdir,
                               run_qtlseqr=qtlseqr,
                               run_ed=ed)
-        run_jobs.append(qtlseqr_obj.qtlseqr_job)
 
     snp_score_methods = []
     if varscore:
@@ -195,10 +184,11 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread, vcf_split_d
                                wild_alt_exp=wild_alt_exp,
                                vcf_ann_file=vcf_ann_file,
                                save_mem=False)
-    run_jobs.extend(snpscore_obj.score_jobs)
+    snpscore_obj.score_jobs
+    """ run_jobs.extend(snpscore_obj.score_jobs)
     logger.info('Launch snpScore jobs...')
     async_batch_sh_jobs(run_jobs, thread=thread)
-    logger.info('The End.')
+    logger.info('The End.') """
 
 
 if __name__ == '__main__':
