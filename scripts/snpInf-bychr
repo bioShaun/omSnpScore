@@ -59,7 +59,7 @@ def main(gene_bed, vcf_dir, vcf_ann_dir, outdir, parameters, logger_file,
             snp_ann_pipe(gene_bed,
                          vcf_ann_file,
                          outdir,
-                         genes,
+                         "",
                          position,
                          vcf_dir,
                          sample_list,
@@ -84,6 +84,10 @@ def main(gene_bed, vcf_dir, vcf_ann_dir, outdir, parameters, logger_file,
         ann_df.loc[:, alt_freq] = ann_df.loc[:, alt_freq].round(3)
         drop_cols.extend([ref_ad, alt_ad])
     ann_df.drop(drop_cols, axis=1, inplace=True)
+    ann_df = ann_df.reset_index()
+    ann_df.drop('index', axis=1, inplace=True)
+    """ if genes:
+        ann_df = ann_df[ann_df.Gene.isin(gene_list)] """
     printdf(ann_df)
 
 

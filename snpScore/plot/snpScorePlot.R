@@ -106,6 +106,7 @@ var_table_df <- fread(var_table)
 if (plot_type == 'density') {
   var_table_df$SNP <- paste(var_table_df$Chr, var_table_df$Pos, sep = ':')
   plot_data <- var_table_df[, c('SNP', 'Chr', 'Pos')]
+  plot_data <- arrange(plot_data, Chr, Pos)
   omsCMplot(plot_data,plot.type="d",bin.size=1e6,
          col=c("darkgreen", "yellow", "red"),
          file="jpg", dpi=300, out.name = output_prefix,

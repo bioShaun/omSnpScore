@@ -26,6 +26,8 @@ setup(
         'scripts/table2pkl-mp',
         'scripts/table2csv-mp',
         'scripts/snpScore-cli',
+        'scripts/snpScore-mp',
+        'scripts/snpScore-bychr',
         'scripts/merge_vcf_feature',
         'scripts/snpInf',
         'scripts/snpInf-bychr',

@@ -419,18 +419,33 @@ def replace_outdir(args, chrom):
     return arg_list
 
 
-def merge_split_file(file_dir, file_pattern):
+def wrap_param_arg(args):
+    flag = False
+    for arg_i in args:
+        if flag:
+            arg_i = f"'{arg_i}'"
+            flag = False
+        if arg_i == '-p' or arg_i == '--parameters':
+            flag = True
+        yield arg_i
+
+
+def merge_split_file(file_dir, file_pattern, sortby=None):
     pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
-    df_list = []
-    filename = ''
+    exist_files = Path(file_dir).glob(f'{file_pattern}')
+    exist_file_name = [file_i.name for file_i in exist_files]
+    df_dict = dict()
     for file_i in pattern_file:
-        df_list.append(pd.read_csv(file_i))
-        if not filename:
-            filename = file_i.name
-    outfile = Path(file_dir) / filename
-    df = pd.concat(df_list)
-    df.to_csv(outfile, index=False)
-    return outfile
+        #if file_i.name not in exist_file_name:
+        df_dict.setdefault(file_i.name, []).append(pd.read_csv(file_i))
+    for filename_i in df_dict:
+        outfile = Path(file_dir) / filename_i
+        df_list = df_dict[filename_i]
+        df = pd.concat(df_list)
+        if sortby:
+            df.sort_values(sortby, inplace=True)
+        df.to_csv(outfile, index=False)
+        yield outfile
 
 
 def gene2pos(gene_bed, genes):
@@ -451,3 +466,20 @@ def printdf(df):
     for index_i in df.index:
         line_i = [str(col_i) for col_i in df.loc[index_i]]
         print('\t'.join(line_i))
+
+
+def freq2qtlseqr(snpfreq):
+    snpfreq = Path(snpfreq)
+    snpfreq_df = pd.read_csv(snpfreq)
+
+    def rename_col(col_i):
+        pos_map = {'Chr': 'CHROM', 'Pos': 'POS', 'Alt': 'ALT'}
+        if pos_map.get(col_i):
+            return pos_map[col_i]
+        else:
+            return re.sub(r"(\w+).(\w+).AD", r"AD_\2.\1", col_i)
+
+    snpfreq_df.columns = [rename_col(col_i) for col_i in snpfreq_df.columns]
+    qtlseqr_table = snpfreq.with_suffix('.qtlseqr.csv')
+    snpfreq_df.to_csv(qtlseqr_table, index=False)
+    return qtlseqr_table

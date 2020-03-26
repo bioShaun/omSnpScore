@@ -14,5 +14,7 @@ from ._utils import score_plot
 from ._utils import merge_split_file
 from ._utils import gene2pos
 from ._utils import printdf
+from ._utils import wrap_param_arg
+from ._utils import freq2qtlseqr
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE

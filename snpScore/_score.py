@@ -8,7 +8,7 @@ from loguru import logger
 from pathlib import Path
 from datetime import datetime
 from collections import OrderedDict
-from ._var import REF_FREQ, QTLSEQR_PLOT
+from ._var import REF_FREQ, QTLSEQR_PLOT, QTLSEQR_PLOT_WEB
 from ._var import SnpGroup, MUT_NAME, WILD_NAME
 from ._utils import freq_accordance
 from ._utils import alt_ref_cut
@@ -282,6 +282,7 @@ class qtlSeqr:
     ref_freq = attr.ib(default=REF_FREQ, converter=float)
     pop_stru = attr.ib(default='RIL')
     min_sample_dp = attr.ib(default=5, converter=int)
+    web = attr.ib(default=False)
 
     @property
     def qtlseqr_job(self):
@@ -290,8 +291,14 @@ class qtlSeqr:
             cmd_flag += '--qtlseqr '
         if self.run_ed:
             cmd_flag += '--ed '
+        if not cmd_flag:
+            return None
         logger.info('Generating QTLseqr command...')
-        cmd_line = (f'Rscript {QTLSEQR_PLOT} '
+        if self.web:
+            plot_r = QTLSEQR_PLOT_WEB
+        else:
+            plot_r = QTLSEQR_PLOT
+        cmd_line = (f'Rscript {plot_r} '
                     f'--input {self.input_table} '
                     f'--high_bulk {MUT_NAME} '
                     f'--low_bulk {WILD_NAME} '
