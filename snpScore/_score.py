@@ -234,6 +234,10 @@ class snpScoreBox:
                 if self.score_df is None:
                     continue
                 self.score_df.to_csv(self.score_file)
+                if method == 'snp_index':
+                    self.score_df.drop(
+                        [SnpGroupFreq.mut.value, SnpGroupFreq.wild.value],
+                        axis=1, inplace=True)
             else:
                 self.score_df = pd.read_csv(self.score_file)
             self.plot_cmds.append(
