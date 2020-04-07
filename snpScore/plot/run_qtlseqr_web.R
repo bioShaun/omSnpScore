@@ -88,7 +88,7 @@ deltaSNP_plot <- paste(prefix, 'qtlSeqr.deltaSNP.png', sep='.')
 Gprime_plot <- paste(prefix, 'qtlSeqr.Gprime.png', sep='.')
 qtlseqr_file = paste(prefix, "qtlSeqr.QTLseqr.csv", sep='.')
 if (qtlseqr_flag && (! file.exists(deltaSNP_plot) || ! file.exists(Gprime_plot) || ! file.exists(qtlseqr_file))) {
-    plot_width = 8 + 0.75 * chrom_num
+    plot_width = 8 + 0.4 * chrom_num
     df_filt <- runGprimeAnalysis(SNPset = df_filt, windowSize = window, outlierFilter = "deltaSNP")
     df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50, filter=NULL)
     png(deltaSNP_plot, width=plot_width, height=6, res=300, unit='in')
