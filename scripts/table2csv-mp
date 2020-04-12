@@ -7,22 +7,28 @@ import pandas as pd
 from pathlib import PurePath, Path
 
 
-def alt_allele_num(reads_inf):
+def alt_allele_num(reads_inf, allele_num=2):
     reads_inf_str_list = str(reads_inf).split(',')
-    reads_inf_int_list = [int(read_i) for read_i in reads_inf_str_list]
-    if len(reads_inf_int_list) == 1:
-        return 0
+    if len(reads_inf_str_list) <= allele_num:
+        reads_inf_int_list = [int(read_i) for read_i in reads_inf_str_list]
+        if len(reads_inf_int_list) == 1:
+            return 0
+        else:
+            return reads_inf_int_list[1]
     else:
-        return reads_inf_int_list[1]
+        return np.nan
 
 
-def ref_allele_num(reads_inf):
+def ref_allele_num(reads_inf, allele_num=2):
     reads_inf_str_list = str(reads_inf).split(',')
-    reads_inf_int_list = [int(read_i) for read_i in reads_inf_str_list]
-    if len(reads_inf_int_list) == 1:
-        return 0
+    if len(reads_inf_str_list) <= allele_num:
+        reads_inf_int_list = [int(read_i) for read_i in reads_inf_str_list]
+        if len(reads_inf_int_list) == 1:
+            return 0
+        else:
+            return reads_inf_int_list[0]
     else:
-        return reads_inf_int_list[0]
+        return np.nan
 
 
 def allele_depth(reads_inf, allele_num=2):
@@ -51,6 +57,7 @@ def reformat_table(table_df, sample_name):
     out_table_df.loc[:, 'alt_count'] = table_df.loc[:, sample_name].map(
         alt_allele_num)
     out_table_df.drop([sample_name], axis=1, inplace=True)
+    out_table_df.dropna(inplace=True)
     return out_table_df
 
 
