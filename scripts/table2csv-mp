@@ -58,6 +58,8 @@ def reformat_table(table_df, sample_name):
         alt_allele_num)
     out_table_df.drop([sample_name], axis=1, inplace=True)
     out_table_df.dropna(inplace=True)
+    out_table_df.loc[:, 'ref_count'] = out_table_df.ref_count.astype('int')
+    out_table_df.loc[:, 'alt_count'] = out_table_df.alt_count.astype('int')
     return out_table_df
 
 
