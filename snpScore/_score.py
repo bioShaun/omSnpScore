@@ -40,6 +40,7 @@ class snpScoreBox:
                            converter=lambda x: x if x is None else float(x))
     vcf_ann_file = attr.ib(default=None)
     save_mem = attr.ib(default=True)
+    ann_region_num = attr.ib(default=100)
 
     def __attrs_post_init__(self):
         self._freq_dict = OrderedDict()
@@ -205,7 +206,10 @@ class snpScoreBox:
     def score_ann_df(self):
         # add snp annotation to snp score table and flat
         logger.info('Annotating snp score...')
-        self._score_ann_df = self.score_df.merge(
+        ann_score_df = self.score_df.sort_values(
+            ['snp_score'], ascending=False)
+        ann_score_df = ann_score_df[:100]
+        self._score_ann_df = ann_score_df.merge(
             self.snp_window_ann_df,
             left_on=['Chrom', 'Start', 'End'],
             right_on=['Chrom', 'Start', 'End'],
@@ -240,7 +244,7 @@ class snpScoreBox:
                 score_plot(self.score_file, method,
                            f'{score_name}.{method_name}', self.chr_size))
             self.score_ann_file = self.outdir / \
-                f'{score_name}.{method}.score.ann.csv'
+                f'{score_name}.{method}.score.top{self.ann_region_num}.ann.csv'
             if not self.score_ann_file.is_file():
                 self.score_ann_df.to_csv(self.score_ann_file, index=False)
                 if self.save_mem:
