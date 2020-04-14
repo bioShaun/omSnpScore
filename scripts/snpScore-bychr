@@ -65,8 +65,6 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
                                min_depth=min_depth,
                                chrom=chrom)
 
-
-
     snp_score_methods = []
     snp_score_methods.append('var')
     if input_params.get('snp_index'):

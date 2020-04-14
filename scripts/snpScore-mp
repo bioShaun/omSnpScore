@@ -58,6 +58,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
     for param_i in parameters_obj:
         if parameters_obj[param_i]:
             input_params.update({param_i: parameters_obj[param_i]})
+    ann_number = input_params.get('ann_number', 100)
 
     outdir = Path(outdir)
     outdir_suffix = outdir_suffix_from_params(parameters_obj)
@@ -88,7 +89,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
             plot_cmd.append(
                 score_plot(snp_score_file, method, snp_score_file.stem,
                            CHR_SIZE, 'web'))
-        snp_score_ann_file_pattern = f'*{method}.score.ann.csv'
+        snp_score_ann_file_pattern = f'*{method}.score.top{ann_number}.ann.csv'
         for snp_score_ann_file in merge_split_file(results_dir,
                                                    snp_score_ann_file_pattern,
                                                    sortby=["Chrom", "Start"]):
