@@ -100,30 +100,30 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
         plot_cmd.append(
             score_plot(snp_freq_file, 'density', snp_freq_file.stem, CHR_SIZE,
                        'web'))
-        if input_params.get('qtlseqr') or input_params.get('ed'):
-            qtlseqr_snp_table = freq2qtlseqr(snp_freq_file)
-            out_prefix = str(snp_freq_file).replace(".snp.freq.csv", "")
-            qtlseqr_obj = qtlSeqr(
-                input_table=qtlseqr_snp_table,
-                window=input_params.get('qtlseqr_window', 1e7),
-                ref_freq=0.3,
-                pop_stru=input_params.get('pop_stru', 'RIL'),
-                min_sample_dp=input_params.get('min_depth', 5),
-                out_dir=out_prefix,
-                run_qtlseqr=input_params.get('qtlseqr'),
-                run_ed=False,
-                web=True)
-            ed_obj = qtlSeqr(input_table=qtlseqr_snp_table,
-                             window=input_params.get('qtlseqr_window', 1e7),
-                             ref_freq=0.3,
-                             pop_stru=input_params.get('pop_stru', 'RIL'),
-                             min_sample_dp=input_params.get('min_depth', 5),
-                             out_dir=out_prefix,
-                             run_qtlseqr=False,
-                             run_ed=input_params.get('ed'),
-                             web=True)
-            plot_cmd.append(qtlseqr_obj.qtlseqr_job)
-            plot_cmd.append(ed_obj.qtlseqr_job)
+        # if input_params.get('qtlseqr') or input_params.get('ed'):
+        #     qtlseqr_snp_table = freq2qtlseqr(snp_freq_file)
+        #     out_prefix = str(snp_freq_file).replace(".snp.freq.csv", "")
+        #     qtlseqr_obj = qtlSeqr(
+        #         input_table=qtlseqr_snp_table,
+        #         window=input_params.get('qtlseqr_window', 1e7),
+        #         ref_freq=0.3,
+        #         pop_stru=input_params.get('pop_stru', 'RIL'),
+        #         min_sample_dp=input_params.get('min_depth', 5),
+        #         out_dir=out_prefix,
+        #         run_qtlseqr=input_params.get('qtlseqr'),
+        #         run_ed=False,
+        #         web=True)
+        #     ed_obj = qtlSeqr(input_table=qtlseqr_snp_table,
+        #                      window=input_params.get('qtlseqr_window', 1e7),
+        #                      ref_freq=0.3,
+        #                      pop_stru=input_params.get('pop_stru', 'RIL'),
+        #                      min_sample_dp=input_params.get('min_depth', 5),
+        #                      out_dir=out_prefix,
+        #                      run_qtlseqr=False,
+        #                      run_ed=input_params.get('ed'),
+        #                      web=True)
+        #     plot_cmd.append(qtlseqr_obj.qtlseqr_job)
+        #     plot_cmd.append(ed_obj.qtlseqr_job)
 
     plot_cmd = list(filter(None, plot_cmd))
     async_batch_sh_jobs(plot_cmd, thread=thread)

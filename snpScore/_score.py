@@ -1,5 +1,5 @@
 # TODO: score system involve background and parent
-
+import os
 import attr
 import time
 import numpy as np
@@ -313,3 +313,8 @@ class qtlSeqr:
                     f'--pop_stru {self.pop_stru} '
                     f'{cmd_flag}')
         return cmd_line
+
+    @property
+    def launch_job:
+        if self.qtlseqr_job:
+            os.system(self.qtlseqr_job)

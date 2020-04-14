@@ -90,6 +90,31 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
         wild_alt_exp=input_params.get('wild_alt_exp'),
         vcf_ann_file=vcf_ann_file)
     snpscore_obj.score_jobs
+    if input_params.get('qtlseqr') or input_params.get('ed'):
+        qtlseqr_snp_table = freq2qtlseqr(snpscore_obj.alt_filter_freq_file)
+        out_prefix = str(snp_freq_file).replace(".snp.freq.csv", "")
+        qtlseqr_obj = qtlSeqr(
+            input_table=qtlseqr_snp_table,
+            window=input_params.get('qtlseqr_window', 1e7),
+            ref_freq=0.3,
+            pop_stru=input_params.get('pop_stru', 'RIL'),
+            min_sample_dp=input_params.get('min_depth', 5),
+            out_dir=out_prefix,
+            run_qtlseqr=input_params.get('qtlseqr'),
+            run_ed=False,
+            web=True)
+        qtlseqr_obj.launch_job
+        ed_obj = qtlSeqr(input_table=qtlseqr_snp_table,
+                         window=input_params.get('qtlseqr_window', 1e7),
+                         ref_freq=0.3,
+                         pop_stru=input_params.get('pop_stru', 'RIL'),
+                         min_sample_dp=input_params.get('min_depth', 5),
+                         out_dir=out_prefix,
+                         run_qtlseqr=False,
+                         run_ed=input_params.get('ed'),
+                         web=True)
+        ed_obj.launch_job
+
     """run_jobs.extend(snpscore_obj.score_jobs)
     logger.info('Launch snpScore jobs...')
     async_batch_sh_jobs(run_jobs, thread=4)
