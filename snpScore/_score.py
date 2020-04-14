@@ -315,6 +315,6 @@ class qtlSeqr:
         return cmd_line
 
     @property
-    def launch_job:
+    def launch_job(self):
         if self.qtlseqr_job:
             os.system(self.qtlseqr_job)
