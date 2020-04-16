@@ -152,7 +152,7 @@ qtlseqr_plot <- function(field, ylab, suffix, fdrT=0.05) {
 }
 
 qtlseqr_snp_index_plot <- function() {
-
+    var_table_df <- filter(var_table_df, CHROM != "chrUn")
     var_table_df$POS <- var_table_df$POS / 1e6
     var_table_df$chrom_genome <- str_extract(var_table_df$CHROM, "chr\\d")
     var_table_df$chrom_num <- str_remove(var_table_df$CHROM, "chr\\d")
@@ -224,6 +224,7 @@ if (plot_type == 'density') {
 } else if (plot_type == 'ED'){
     if ('fitted' %in% colnames(var_table_df))  {
         var_table_df <- data.frame(var_table_df)
+        var_table_df <- filter(var_table_df, CHROM != "chrUn")
         breaks <- NULL
         for (row in 1:(nrow(var_table_df)-1)){
             if (var_table_df$CHROM[row] != var_table_df$CHROM[row+1]) {
@@ -241,8 +242,7 @@ if (plot_type == 'density') {
             lastbreak <- b
         }    
         plot.df$CHROM <- str_remove(plot.df$CHROM, fixed('chr', ignore_case = T))
-        cutoff <- 3*(sd(var_table_df$fitted)+median(var_table_df$fitted))
-        plot.df <- filter(plot.df, CHROM != "Un")
+        cutoff <- 3*(sd(var_table_df$fitted)+median(var_table_df$fitted))        
         output_prefix = paste(output_prefix, 'ED.plot', sep=".")
         save_general_plot(ed_plot(plot.df, breaks, cutoff, labelpos), 
         output_prefix, plot_type = 'png', width = 10)
