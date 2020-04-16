@@ -103,7 +103,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
                               ref_freq=input_params.get(
                                   'qtlseqr_ref_freq', 0.3),
                               pop_stru=input_params.get('pop_stru', 'RIL'),
-                              min_sample_dp=input_params.get('min_depth', 5),
+                              min_sample_dp=input_params.get('qtlseqr_min_depth', 5),
                               out_dir=results_dir,
                               run_qtlseqr=input_params.get('qtlseqr'),
                               run_ed=input_params.get('ed'),
