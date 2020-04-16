@@ -70,7 +70,7 @@ low_bulk <- str_split(argv$low_bulk, ',')[[1]]
 ref_freq <- argv$ref_freq
 min_sample_dp <- argv$min_sample_dp
 pop_stru <- argv$pop_stru
-out_dir <- argv$out_dir
+prefix <- argv$out_dir
 qtlseqr_flag <- argv$qtlseqr
 ed_flag <- argv$ed
 ed_plot_flag <- argv$ed_plot
@@ -78,82 +78,60 @@ ed_plot_flag <- argv$ed_plot
 plot_cols <- brewer.pal(9, 'Set1')
 wheat_cols <- c(plot_cols[2], plot_cols[3], plot_cols[5])
 
-
-
-
 df <- importFromTable(file=input_table, highBulk = high_bulk, lowBulk = low_bulk)
 df_filt <- filterSNPs(SNPset=df, refAlleleFreq = ref_freq, minSampleDepth = min_sample_dp)
 chrom_num <- length(unique(df_filt$CHROM))
 
 table_name <- c()
-params <- c()
-if (qtlseqr_flag) {
-    table_name <- c('qtlseqr')
-    window_params <- str_glue("window_", as.integer(window) / 1e6, 'M')
-    pop_stru_param <- str_glue("popStru_", pop_stru)
-    params <- c(window_params, pop_stru_param)
-}
-if (ed_flag) {
-    table_name <- c(table_name, 'ed')
-}
-ref_freq_param = str_glue("refFreq_", ref_freq)
-minDp_param = str_glue("minDepth_", min_sample_dp)
-params <- c(params, ref_freq_param, minDp_param)
-table_name <- c(table_name, params, 'csv')
-table_name_flat <- paste(table_name, collapse = '.')
-table_prefix <- file.path(out_dir, table_name_flat)
-if (qtlseqr_flag && !file.exists(table_prefix)) {
+prefix_name = basename(prefix)
+deltaSNP_plot <- paste(prefix, 'qtlSeqr.deltaSNP.png', sep='.')
+Gprime_plot <- paste(prefix, 'qtlSeqr.Gprime.png', sep='.')
+qtlseqr_file = paste(prefix, "qtlSeqr.QTLseqr.csv", sep='.')
+if (qtlseqr_flag && !file.exists(qtlseqr_file)) {
     filter_stat = 1 - 2*ref_freq
-    
-    outname <- paste('qtlSeqr', as.integer(window), ref_freq, min_sample_dp, pop_stru, sep='.')
-    out_prefix <- file.path(out_dir, outname)
+    plot_width = 8 + 0.4 * chrom_num
     df_filt <- runGprimeAnalysis(SNPset = df_filt, windowSize = window, outlierFilter = "deltaSNP")
     df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50, filter=filter_stat)
-    #png(paste(out_prefix, 'deltaSNP.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
-    #print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
+    #png(deltaSNP_plot, width=plot_width, height=6, res=300, unit='in')
+    #print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE, xtext=FALSE, plot_title=prefix_name))
     #dev.off()
 
     #pdf(paste(out_prefix, 'deltaSNP.pdf', sep='.'), width=4 * chrom_num, height=6)
     #print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
     #dev.off()
 
-    #png(paste(out_prefix, 'Gprime.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
-    #print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
+    #png(Gprime_plot, width=plot_width, height=6, res=300, unit='in')
+    #print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01,xtext=FALSE, plot_title=prefix_name))
     #dev.off()
 
     #pdf(paste(out_prefix, 'Gprime.pdf', sep='.'), width=4 * chrom_num, height=6)
     #print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
     #dev.off()
-
-    #res <- try(getQTLTable(
-    #    SNPset = df_filt,
-    #    alpha = 0.1,
-    #    export = TRUE,
-    #    fileName = paste(out_prefix, "QTLseqr.csv", sep='.')
-    #))
-    #if(inherits(res, "try-error"))
-    #{
-    #   print("Can not find significant region using QTLseqr!")
-    #}
+    write.csv(df_filt, file = qtlseqr_file, quote=F, row.names=F)
 } 
 
-if (ed_flag && !file.exists(table_prefix)) {
+
+ed_plot <- paste(prefix, 'ED.png', sep='.')
+ed_table <- paste(prefix, 'ED.csv', sep='.')
+
+if (ed_flag && ! file.exists(ed_table) ){
+    table_name <- c(table_name, 'ed')
     eu_power <- 4
     df_filt$euc<-sqrt(2 * (df_filt$SNPindex.LOW-df_filt$SNPindex.HIGH)^2)
     chrs <- unique(df_filt$CHROM)
-    cat("Processing each chromosome:\nChr\tSnps\tSpan\n")
+    #cat("Processing each chromosome:\nChr\tSnps\tSpan\n")
     for(chr in chrs) {
         e = df_filt$euc[df_filt$CHROM == chr]^eu_power
         p = df_filt$POS[df_filt$CHROM == chr]
         if(as.integer(length(p)) < 50){
-            cat(chr, " has less than 50 snps (n=", length(p), ")\n", sep="")
+            #cat(chr, " has less than 50 snps (n=", length(p), ")\n", sep="")
             next
         }
         lo <- loess.as(p, e, degree = 1, family = 'symmetric', criterion = 'aicc')
         df_filt$fitted[df_filt$CHROM==chr] <- lo$fitted
         df_filt$unfitted[df_filt$CHROM==chr] <- lo$y
         usespan <- lo$pars$span
-        cat(chr, length(p), round(usespan[1], digits=3), "\n", sep="\t")
+        #cat(chr, length(p), round(usespan[1], digits=3), "\n", sep="\t")
     }    
     breaks <- NULL
     for (row in 1:(nrow(df_filt)-1)){
@@ -180,7 +158,8 @@ if (ed_flag && !file.exists(table_prefix)) {
             ylim=c(min(plot.df$fitted, na.rm=T),
             1.1*max(plot.df$fitted, na.rm=T)), 
             ylab=substitute("ED"^p~ ~"(Loess fit)", list(p=eu_power)), 
-            xaxt='n', xaxs='i', xlab="Chromosome", cex=.6, cex.lab=.8, cex.axis=.8)
+            xaxt='n', xaxs='i', xlab="Chromosome", cex=.6, cex.lab=.8, cex.axis=.8,
+            main=prefix_name)
         abline(v=(breaks[1:length(breaks)-1]+2), col="grey")
         abline(h=cutoff, col='red', lty=2)
         mtext(unique(plot.df$CHROM[!is.na(plot.df$CHROM)]), at = labelpos, side=1, cex=.5)
@@ -193,13 +172,13 @@ if (ed_flag && !file.exists(table_prefix)) {
         abline(v=(breaks[1:length(breaks)-1]+2), col="grey")
         mtext(unique(plot.df$CHROM[!is.na(plot.df$CHROM)]), at = labelpos, side=1, cex=.5)
     }
-    outname <- paste('ED', ref_freq, min_sample_dp, sep='.')
-    out_prefix <- file.path(out_dir, outname)
+    out_prefix <- paste(prefix, 'ED', sep='.')    
     plot_width <- length(chrs) * 0.1 + 8
     #save_general_plot(ed_plot(), out_prefix, plot_type = 'png', width = plot_width)
     #save_general_plot(ed_plot(), out_prefix, plot_type = 'pdf', width = plot_width)
+    write.csv(df_filt, file = ed_table, quote=F, row.names=F)
 }
 
-if (!file.exists(table_prefix) ) {
-    write.csv(df_filt, file = table_prefix, quote=F, row.names=F)
-}
+
+
+

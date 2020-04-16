@@ -149,7 +149,10 @@ def equal2parent(snp_rep_df, child, parent):
         return snp_rep_df
 
 
-def filter_snp(alt_freq_stat_df, freq_dict, filter_freq_stats):
+def filter_snp(alt_freq_stat_df,
+               freq_dict,
+               filter_freq_stats,
+               filter_method="nonsymmetrical"):
     alt_rep_df = alt_freq_stat_df.copy()
     for member in SnpGroupFreq.__members__.values():
         if member.value not in alt_rep_df.columns:
@@ -166,10 +169,11 @@ def filter_snp(alt_freq_stat_df, freq_dict, filter_freq_stats):
                               SnpGroupFreq.mut_pa.value)
     alt_rep_df = equal2parent(alt_rep_df, SnpGroupFreq.wild.value,
                               SnpGroupFreq.wild_pa.value)
-    # step3 mutant not equal to wild
-    mask = alt_rep_df.loc[:, SnpGroupFreq.mut.value] \
-        != alt_rep_df.loc[:, SnpGroupFreq.wild.value]
-    alt_rep_df = alt_rep_df[mask]
+    if filter_method == 'nonsymmetrical':
+        # step3 mutant not equal to wild
+        mask = alt_rep_df.loc[:, SnpGroupFreq.mut.value] \
+            != alt_rep_df.loc[:, SnpGroupFreq.wild.value]
+        alt_rep_df = alt_rep_df[mask]
     alt_freq_stat_filter_df = alt_freq_stat_df.loc[alt_rep_df.index]
     alt_freq_stat_filter_df.to_csv(filter_freq_stats, index=False)
     return alt_freq_stat_filter_df
@@ -314,6 +318,12 @@ def score_plot(score_file,
     elif method == 'snp_index':
         out_plot = score_file.with_suffix('')
         out_prefix = out_plot
+    elif method in ['ED', 'snpIndex', 'Gprime']:
+        out_prefix = score_file.parent / plot_title
+        if method == 'Gprime':
+            out_plot = score_file.with_suffix(f'.{method}.plot.jpg')
+        else:
+            out_plot = score_file.with_suffix(f'.{method}.plot.png')
     else:
         raise UnsupportedPlot(method)
     cmd = (f'Rscript {SNP_SCORE_PLOT} '
@@ -436,7 +446,7 @@ def merge_split_file(file_dir, file_pattern, sortby=None):
     exist_file_name = [file_i.name for file_i in exist_files]
     df_dict = dict()
     for file_i in pattern_file:
-        #if file_i.name not in exist_file_name:
+        # if file_i.name not in exist_file_name:
         df_dict.setdefault(file_i.name, []).append(pd.read_csv(file_i))
     for filename_i in df_dict:
         outfile = Path(file_dir) / filename_i
@@ -444,7 +454,8 @@ def merge_split_file(file_dir, file_pattern, sortby=None):
         df = pd.concat(df_list)
         if sortby:
             df.sort_values(sortby, inplace=True)
-        df.to_csv(outfile, index=False)
+        if not outfile.is_file():
+            df.to_csv(outfile, index=False)
         yield outfile
 
 

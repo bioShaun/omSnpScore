@@ -41,6 +41,7 @@ class snpScoreBox:
     vcf_ann_file = attr.ib(default=None)
     save_mem = attr.ib(default=True)
     ann_region_num = attr.ib(default=100)
+    filter_method = attr.ib(default="nonsymmetrical")
 
     def __attrs_post_init__(self):
         self._freq_dict = OrderedDict()
@@ -106,7 +107,8 @@ class snpScoreBox:
                 ]
                 group_out_label.append(group_i)
                 group_out_label.extend(label_group)
-            self._group_label = '_'.join(group_out_label)
+            self._group_label = '_'.join(
+                group_out_label) + f'.{self.filter_method}'
         return self._group_label
 
     @property
@@ -139,15 +141,15 @@ class snpScoreBox:
                 logger.info('Filtering snp by freq...')
                 self._alt_filter_freq_df = filter_snp(
                     self.alt_freq_df, self.freq_dict,
-                    self.alt_filter_freq_file)
+                    self.alt_filter_freq_file, self.filter_method)
         return self._alt_filter_freq_df
 
     @property
     def snp_number_window_file(self):
-        return make_snp_number_windows(self.alt_filter_freq_df,
-                                       self.group_label,
-                                       self.snp_number_window,
-                                       self.snp_number_step, self.outdir)
+        return make_snp_number_windows(
+            self.alt_filter_freq_df,
+            self.group_label, self.snp_number_window,
+            self.snp_number_step, self.outdir)
 
     @property
     def alt_freq_dis_df(self):
@@ -206,8 +208,8 @@ class snpScoreBox:
     def score_ann_df(self):
         # add snp annotation to snp score table and flat
         logger.info('Annotating snp score...')
-        ann_score_df = self.score_df.sort_values(
-            ['snp_score'], ascending=False)
+        ann_score_df = self.score_df.sort_values(['snp_score'],
+                                                 ascending=False)
         ann_score_df = ann_score_df[:100]
         self._score_ann_df = ann_score_df.merge(
             self.snp_window_ann_df,
