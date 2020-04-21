@@ -2,7 +2,6 @@ import re
 import asyncio
 import shutil
 import jinja2
-import delegator
 import numpy as np
 import pandas as pd
 from io import StringIO
@@ -523,10 +522,10 @@ def circos_cfg(circos_prefix):
     cfgFile = circos_prefix / 'circos.conf'
     with open(cfgFile, 'w') as file_inf:
         file_inf.write(cfgObj)
+    return circos_path / circos_file
 
 
 def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
     circos_sh = PurePath(__file__).parent / 'plot' / 'data2circos.sh'
     cmd = f'sh {circos_sh} {varScore_csv} {qtlseqr_ed_csv} {snp_freq_csv} {out_prefix}'
-    print(cmd)
-    #delegator.run(cmd)
+    return cmd

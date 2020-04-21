@@ -133,15 +133,18 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     plot_cmd.append(
         score_plot(qtlseqr_file, 'snpIndex', qtlseqr_file.stem, CHR_SIZE,
                    'web'))
-    plot_cmd = list(filter(None, plot_cmd))
-    async_batch_sh_jobs(plot_cmd, thread=thread)
     if circos:
         circos_name = circos_suffix(snpscore_obj.score_prefix,
                                     qtlseqr_obj.filePath.stem)
         circos_dir = results_dir / circos_name
-        circos_cfg(circos_dir)
-        circos_plot(snp_score_file, qtlseqr_file, snp_freq_file, circos_dir)
+        circos_plot_path = circos_cfg(circos_dir)
+        if not circos_plot_path.is_file():
+            plot_cmd.append(
+                circos_plot(snp_score_file, qtlseqr_file, snp_freq_file,
+                            circos_dir))
     logger.info('Fin.')
+    plot_cmd = list(filter(None, plot_cmd))
+    async_batch_sh_jobs(plot_cmd, thread=thread)
     print(full_outdir)
 
 
