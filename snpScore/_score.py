@@ -112,6 +112,10 @@ class snpScoreBox:
         return self._group_label
 
     @property
+    def score_prefix(self):
+        return f'{self.group_label}.snp_num.window.w{self.snp_number_window}.s{self.snp_number_step}'
+
+    @property
     def est_label(self):
         if self._est_label is None:
             group_out_label = []
@@ -146,10 +150,10 @@ class snpScoreBox:
 
     @property
     def snp_number_window_file(self):
-        return make_snp_number_windows(
-            self.alt_filter_freq_df,
-            self.group_label, self.snp_number_window,
-            self.snp_number_step, self.outdir)
+        return make_snp_number_windows(self.alt_filter_freq_df,
+                                       self.group_label,
+                                       self.snp_number_window,
+                                       self.snp_number_step, self.outdir)
 
     @property
     def alt_freq_dis_df(self):
@@ -291,6 +295,23 @@ class qtlSeqr:
     web = attr.ib(default=False)
 
     @property
+    def filePath(self):
+        filename_els = ['qtlseqr']
+        if self.run_ed:
+            filename_els.append('ed')
+        params_els = []
+        if self.run_qtlseqr:
+            window_m = int(self.window / 1e6)
+            params_els.append(f'window_{window_m}M')
+            params_els.append(f'popStru_{self.pop_stru}')
+        params_els.append(f'refFreq_{self.ref_freq}')
+        params_els.append(f'minDepth_{self.min_sample_dp}')
+        filename_els.extend(params_els)
+        filename_els.append('csv')
+        filename = '.'.join(filename_els)
+        return self.out_dir / filename
+
+    @property
     def qtlseqr_job(self):
         cmd_flag = ''
         if self.run_qtlseqr:
@@ -308,7 +329,7 @@ class qtlSeqr:
                     f'--input {self.input_table} '
                     f'--high_bulk {MUT_NAME} '
                     f'--low_bulk {WILD_NAME} '
-                    f'--out_dir {self.out_dir} '
+                    f'--out_dir {self.filePath} '
                     f'--window {self.window} '
                     f'--ref_freq {self.ref_freq} '
                     f'--min_sample_dp {self.min_sample_dp} '

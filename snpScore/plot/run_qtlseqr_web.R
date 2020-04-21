@@ -85,23 +85,25 @@ df <- importFromTable(file=input_table, highBulk = high_bulk, lowBulk = low_bulk
 df_filt <- filterSNPs(SNPset=df, refAlleleFreq = ref_freq, minSampleDepth = min_sample_dp)
 chrom_num <- length(unique(df_filt$CHROM))
 
-table_name <- c()
-params <- c()
-if (qtlseqr_flag) {
-    table_name <- c('qtlseqr')
-    window_params <- str_glue("window_", as.integer(window) / 1e6, 'M')
-    pop_stru_param <- str_glue("popStru_", pop_stru)
-    params <- c(window_params, pop_stru_param)
-}
-if (ed_flag) {
-    table_name <- c(table_name, 'ed')
-}
-ref_freq_param = str_glue("refFreq_", ref_freq)
-minDp_param = str_glue("minDepth_", min_sample_dp)
-params <- c(params, ref_freq_param, minDp_param)
-table_name <- c(table_name, params, 'csv')
-table_name_flat <- paste(table_name, collapse = '.')
-table_prefix <- file.path(out_dir, table_name_flat)
+#table_name <- c()
+#params <- c()
+#if (qtlseqr_flag) {
+#    table_name <- c('qtlseqr')
+#    window_params <- str_glue("window_", as.integer(window) / 1e6, 'M')
+#    pop_stru_param <- str_glue("popStru_", pop_stru)
+#    params <- c(window_params, pop_stru_param)
+#}
+#if (ed_flag) {
+#    table_name <- c(table_name, 'ed')
+#}
+#ref_freq_param = str_glue("refFreq_", ref_freq)
+#minDp_param = str_glue("minDepth_", min_sample_dp)
+#params <- c(params, ref_freq_param, minDp_param)
+#table_name <- c(table_name, params, 'csv')
+#table_name_flat <- paste(table_name, collapse = '.')
+#table_prefix <- file.path(out_dir, table_name_flat)
+table_prefix = out_dir
+
 if (qtlseqr_flag && !file.exists(table_prefix)) {
     filter_stat = 1 - 2*ref_freq
     

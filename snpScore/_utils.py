@@ -1,12 +1,14 @@
 import re
 import asyncio
 import shutil
+import jinja2
+import delegator
 import numpy as np
 import pandas as pd
 from io import StringIO
 from loguru import logger
 from decimal import Decimal, getcontext
-from pathlib import Path
+from pathlib import Path, PurePath
 from functools import reduce
 from pybedtools import BedTool
 from ._var import GROUPS, REF_FREQ, ALT_FREQ, OFFSET
@@ -442,21 +444,17 @@ def wrap_param_arg(args):
 
 def merge_split_file(file_dir, file_pattern, sortby=None):
     pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
-    exist_files = Path(file_dir).glob(f'{file_pattern}')
-    exist_file_name = [file_i.name for file_i in exist_files]
-    df_dict = dict()
+    df_list = []
     for file_i in pattern_file:
         # if file_i.name not in exist_file_name:
-        df_dict.setdefault(file_i.name, []).append(pd.read_csv(file_i))
-    for filename_i in df_dict:
-        outfile = Path(file_dir) / filename_i
-        df_list = df_dict[filename_i]
-        df = pd.concat(df_list)
-        if sortby:
-            df.sort_values(sortby, inplace=True)
-        if not outfile.is_file():
-            df.to_csv(outfile, index=False)
-        yield outfile
+        df_list.append(pd.read_csv(file_i))
+    outfile = Path(file_dir) / file_pattern
+    df = pd.concat(df_list)
+    if sortby:
+        df.sort_values(sortby, inplace=True)
+    if not outfile.is_file():
+        df.to_csv(outfile, index=False)
+    return outfile
 
 
 def gene2pos(gene_bed, genes):
@@ -494,3 +492,41 @@ def freq2qtlseqr(snpfreq):
     qtlseqr_table = snpfreq.with_suffix('.qtlseqr.csv')
     snpfreq_df.to_csv(qtlseqr_table, index=False)
     return qtlseqr_table
+
+
+def circos_suffix(varscore_prefix, qtlseq_prefix):
+    varscore_prefix = varscore_prefix.replace('mutant', 'mut')
+    varscore_prefix = varscore_prefix.replace('wild', 'wd')
+    varscore_prefix = varscore_prefix.replace('symmetrical', 'sym')
+    varscore_prefix = varscore_prefix.replace('snp_num.window.', '')
+    qtlseq_prefix = qtlseq_prefix.replace('window_', '')
+    qtlseq_prefix = qtlseq_prefix.replace('popStru_', '')
+    qtlseq_prefix = qtlseq_prefix.replace('refFreq_', '')
+    qtlseq_prefix = qtlseq_prefix.replace('minDepth_', '')
+    return f'{varscore_prefix}-{qtlseq_prefix}'
+
+
+def circos_cfg(circos_prefix):
+    circos_prefix.mkdir(parents=True, exist_ok=True)
+    circos_path = circos_prefix.parent
+    circos_file = f'{circos_prefix.name}.circos.png'
+    # jinja2 load template
+    PLOT_DIR = PurePath(__file__).parent / 'plot'
+    JINJA_ENV = jinja2.Environment(loader=jinja2.FileSystemLoader(
+        searchpath=f'{PLOT_DIR}'))
+    CIRCOS_CONF = JINJA_ENV.get_template('circos.conf')
+    cfgObj = CIRCOS_CONF.render({
+        'circos_prefix': circos_prefix,
+        'circos_path': circos_path,
+        'circos_file': circos_file
+    })
+    cfgFile = circos_prefix / 'circos.conf'
+    with open(cfgFile, 'w') as file_inf:
+        file_inf.write(cfgObj)
+
+
+def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
+    circos_sh = PurePath(__file__).parent / 'plot' / 'data2circos.sh'
+    cmd = f'sh {circos_sh} {varScore_csv} {qtlseqr_ed_csv} {snp_freq_csv} {out_prefix}'
+    print(cmd)
+    #delegator.run(cmd)
