@@ -140,7 +140,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                                     qtlseqr_obj.filePath.stem)
         circos_dir = results_dir / circos_name
         circos_cfg(circos_dir)
-        circos_plot(snp_score_file, snp_freq_file, qtlseqr_file, circos_dir)
+        circos_plot(snp_score_file, qtlseqr_file, snp_freq_file, circos_dir)
     logger.info('Fin.')
     print(full_outdir)
 

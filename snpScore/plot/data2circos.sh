@@ -38,4 +38,4 @@ awk -v OFS="\t" '{print $1,$2,$3,1+$4}' ${out_prefix}/CI_99.circos.bed > ${out_p
 
 
 # run circos
-circos -conf ${out_prefix}/circos.conf
+/home/zxchen/miniconda3/bin/circos -conf ${out_prefix}/circos.conf
