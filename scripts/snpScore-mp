@@ -136,7 +136,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     if circos:
         circos_name = circos_suffix(snpscore_obj.score_prefix,
                                     qtlseqr_obj.filePath.stem)
-        circos_dir = results_dir / circos_name
+        circos_dir = results_dir / 'circos_data' / circos_name
         circos_plot_path = circos_cfg(circos_dir)
         if not circos_plot_path.is_file():
             plot_cmd.append(

@@ -507,7 +507,7 @@ def circos_suffix(varscore_prefix, qtlseq_prefix):
 
 def circos_cfg(circos_prefix):
     circos_prefix.mkdir(parents=True, exist_ok=True)
-    circos_path = circos_prefix.parent
+    circos_path = circos_prefix.parent.parent
     circos_file = f'{circos_prefix.name}.circos.png'
     # jinja2 load template
     PLOT_DIR = PurePath(__file__).parent / 'plot'
