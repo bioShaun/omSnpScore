@@ -24,17 +24,17 @@ $bedtools map -o max -c 4 -a /data/scripts/circos/1m.window -b ${out_prefix}/Gpr
 cut -f1,2,15 -d"," $qtlseqr_ed_csv |sed 's/,/\t/g'|grep "^chr"|awk -v OFS="\t" '{print $1,$2,$2+1,$3}' > ${out_prefix}/qtlseq.bed
 $bedtools map -o mean -c 4 -a /data/scripts/circos/10m.window -b ${out_prefix}/qtlseq.bed |awk '$4!="."'  > ${out_prefix}/qtlseq.circos.bed
 
-cut -f1,2,25 -d"," $qtlseqr_ed_csv |sed 's/,/\t/g'|grep "^chr"|awk -v OFS="\t" '{print $1,$2,$2+1,$3}' > ${out_prefix}/CI_95.bed
-$bedtools map -o mean -c 4 -a /data/scripts/circos/10m.window -b ${out_prefix}/CI_95.bed |awk '$4!="."'  > ${out_prefix}/CI_95.circos.bed
+#cut -f1,2,25 -d"," $qtlseqr_ed_csv |sed 's/,/\t/g'|grep "^chr"|awk -v OFS="\t" '{print $1,$2,$2+1,$3}' > ${out_prefix}/CI_95.bed
+#$bedtools map -o mean -c 4 -a /data/scripts/circos/10m.window -b ${out_prefix}/CI_95.bed |awk '$4!="."'  > ${out_prefix}/CI_95.circos.bed
 
-awk -v OFS="\t" '{print $1,$2,$3,-1-$4}' ${out_prefix}/CI_95.circos.bed > ${out_prefix}/CI_95.neg.circos.bed
-awk -v OFS="\t" '{print $1,$2,$3,1+$4}' ${out_prefix}/CI_95.circos.bed > ${out_prefix}/CI_95.pos.circos.bed
+#awk -v OFS="\t" '{print $1,$2,$3,-1-$4}' ${out_prefix}/CI_95.circos.bed > ${out_prefix}/CI_95.neg.circos.bed
+#awk -v OFS="\t" '{print $1,$2,$3,1+$4}' ${out_prefix}/CI_95.circos.bed > ${out_prefix}/CI_95.pos.circos.bed
 
-cut -f1,2,26 -d"," $qtlseqr_ed_csv |sed 's/,/\t/g'|grep "^chr"|awk -v OFS="\t" '{print $1,$2,$2+1,$3}' > ${out_prefix}/CI_99.bed
+#cut -f1,2,26 -d"," $qtlseqr_ed_csv |sed 's/,/\t/g'|grep "^chr"|awk -v OFS="\t" '{print $1,$2,$2+1,$3}' > ${out_prefix}/CI_99.bed
 
-$bedtools map -o mean -c 4 -a /data/scripts/circos/10m.window -b ${out_prefix}/CI_99.bed |awk '$4!="."'  > ${out_prefix}/CI_99.circos.bed
-awk -v OFS="\t" '{print $1,$2,$3,-1-$4}' ${out_prefix}/CI_99.circos.bed > ${out_prefix}/CI_99.neg.circos.bed
-awk -v OFS="\t" '{print $1,$2,$3,1+$4}' ${out_prefix}/CI_99.circos.bed > ${out_prefix}/CI_99.pos.circos.bed
+#$bedtools map -o mean -c 4 -a /data/scripts/circos/10m.window -b ${out_prefix}/CI_99.bed |awk '$4!="."'  > ${out_prefix}/CI_99.circos.bed
+#awk -v OFS="\t" '{print $1,$2,$3,-1-$4}' ${out_prefix}/CI_99.circos.bed > ${out_prefix}/CI_99.neg.circos.bed
+#awk -v OFS="\t" '{print $1,$2,$3,1+$4}' ${out_prefix}/CI_99.circos.bed > ${out_prefix}/CI_99.pos.circos.bed
 
 
 # run circos
