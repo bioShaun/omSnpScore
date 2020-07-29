@@ -325,19 +325,23 @@ class qtlSeqr:
             plot_r = QTLSEQR_PLOT_WEB
         else:
             plot_r = QTLSEQR_PLOT
-        cmd_line = (f'Rscript {plot_r} '
-                    f'--input {self.input_table} '
-                    f'--high_bulk {MUT_NAME} '
-                    f'--low_bulk {WILD_NAME} '
-                    f'--out_dir {self.filePath} '
-                    f'--window {self.window} '
-                    f'--ref_freq {self.ref_freq} '
-                    f'--min_sample_dp {self.min_sample_dp} '
-                    f'--pop_stru {self.pop_stru} '
-                    f'{cmd_flag}')
-        return cmd_line
+        if self.filePath.is_file():
+            return None
+        else:
+            cmd_line = (f'Rscript {plot_r} '
+                        f'--input {self.input_table} '
+                        f'--high_bulk {MUT_NAME} '
+                        f'--low_bulk {WILD_NAME} '
+                        f'--out_dir {self.filePath} '
+                        f'--window {self.window} '
+                        f'--ref_freq {self.ref_freq} '
+                        f'--min_sample_dp {self.min_sample_dp} '
+                        f'--pop_stru {self.pop_stru} '
+                        f'{cmd_flag}')
+            return cmd_line
 
     @property
     def launch_job(self):
-        if self.qtlseqr_job:
-            os.system(self.qtlseqr_job)
+        job_cmd = self.qtlseqr_job
+        if job_cmd:
+            os.system(job_cmd)

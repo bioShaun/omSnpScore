@@ -32,6 +32,8 @@ setup(
         'scripts/snpInf',
         'scripts/snpInf-bychr',
         'scripts/snpInf-cli',
+        'scripts/snpScore-mp-cli',
+        'scripts/snpScore-bychr-cli',
     ],
     install_requires=[
         'click',

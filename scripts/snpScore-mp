@@ -69,6 +69,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     for chr_i in chr_size_df.index:
         param_wrap_arg = wrap_param_arg(sys.argv[1:])
         arg_line = ' '.join(param_wrap_arg)
+        arg_line.replace('--circos', '')
         cmd_i = f'{BY_CHR_BIN} {arg_line} --chrom {chr_i}'
         cmd_list.append(cmd_i)
     logger.info('Calculating score ...')
@@ -142,9 +143,9 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
             plot_cmd.append(
                 circos_plot(snp_score_file, qtlseqr_file, snp_freq_file,
                             circos_dir))
-    logger.info('Fin.')
     plot_cmd = list(filter(None, plot_cmd))
     async_batch_sh_jobs(plot_cmd, thread=thread)
+    logger.info('Fin.')
     print(full_outdir)
 
 
