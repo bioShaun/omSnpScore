@@ -34,6 +34,7 @@ setup(
         'scripts/snpInf-cli',
         'scripts/snpScore-mp-cli',
         'scripts/snpScore-bychr-cli',
+        'scripts/splitVcf',
     ],
     install_requires=[
         'click',
@@ -44,6 +45,7 @@ setup(
         'numpy',
         'tables',
         'attrs',
+	'jinja2',
     ],
 )
 

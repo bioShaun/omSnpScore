@@ -217,11 +217,9 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
     run_jobs = list(filter(None, run_jobs))
     logger.info('Launch snpScore jobs...')
     if run_jobs:
-        print(run_jobs)
         async_batch_sh_jobs(run_jobs, thread=thread)
     plot_cmd = list(filter(None, plot_cmd))
     if plot_cmd:
-        print(plot_cmd)
         async_batch_sh_jobs(plot_cmd, thread=thread)
 
     logger.info('The End.')
