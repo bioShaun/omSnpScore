@@ -69,7 +69,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     for chr_i in chr_size_df.index:
         param_wrap_arg = wrap_param_arg(sys.argv[1:])
         arg_line = ' '.join(param_wrap_arg)
-        arg_line.replace('--circos', '')
+        arg_line = arg_line.replace('--circos', '')
         cmd_i = f'{BY_CHR_BIN} {arg_line} --chrom {chr_i}'
         cmd_list.append(cmd_i)
     logger.info('Calculating score ...')
