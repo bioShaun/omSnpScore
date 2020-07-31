@@ -16,5 +16,8 @@ from ._utils import gene2pos
 from ._utils import printdf
 from ._utils import wrap_param_arg
 from ._utils import freq2qtlseqr
+from ._utils import circos_suffix
+from ._utils import circos_cfg
+from ._utils import circos_plot
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE

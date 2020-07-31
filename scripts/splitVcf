@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+import fire
+import pandas as pd
+from snpScore import tableFromVcf
+
+ANN_TABLE_COL = ("#CHROM", "POS", "REF", "ALT", "INFO")
+
+
+def vcfAnn(vcfFile, annoFile):
+    vcf_df = pd.read_csv(vcfFile, sep='\t', header=None, comment="#")
+    ann_df = vcf_df.loc[:, [0, 1, 3, 4, 7]]
+    ann_df.columns = ANN_TABLE_COL
+    ann_df.loc[:, 'INFO'] = [each.split('ANN=')[1] for each in ann_df.INFO]
+    ann_df.to_pickle(annoFile)
+
+
+def splitVcf(vcfFile, splitDir, thread=1):
+    vcf2tb_obj = tableFromVcf(vcf=vcfFile, out_dir=splitDir, thread=thread)
+    vcf2tb_obj.make_table
+
+
+def main(vcfFile, splitDir, annoFile, thread=1):
+    splitVcf(vcfFile, splitDir, thread)
+    vcfAnn(vcfFile, annoFile)
+
+
+if __name__ == "__main__":
+    fire.Fire(main)

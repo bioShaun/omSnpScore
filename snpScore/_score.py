@@ -1,5 +1,5 @@
 # TODO: score system involve background and parent
-
+import os
 import attr
 import time
 import numpy as np
@@ -40,6 +40,8 @@ class snpScoreBox:
                            converter=lambda x: x if x is None else float(x))
     vcf_ann_file = attr.ib(default=None)
     save_mem = attr.ib(default=True)
+    ann_region_num = attr.ib(default=100)
+    filter_method = attr.ib(default="nonsymmetrical")
 
     def __attrs_post_init__(self):
         self._freq_dict = OrderedDict()
@@ -105,8 +107,13 @@ class snpScoreBox:
                 ]
                 group_out_label.append(group_i)
                 group_out_label.extend(label_group)
-            self._group_label = '_'.join(group_out_label)
+            self._group_label = '_'.join(
+                group_out_label) + f'.{self.filter_method}'
         return self._group_label
+
+    @property
+    def score_prefix(self):
+        return f'{self.group_label}.snp_num.window.w{self.snp_number_window}.s{self.snp_number_step}'
 
     @property
     def est_label(self):
@@ -138,7 +145,7 @@ class snpScoreBox:
                 logger.info('Filtering snp by freq...')
                 self._alt_filter_freq_df = filter_snp(
                     self.alt_freq_df, self.freq_dict,
-                    self.alt_filter_freq_file)
+                    self.alt_filter_freq_file, self.filter_method)
         return self._alt_filter_freq_df
 
     @property
@@ -205,7 +212,10 @@ class snpScoreBox:
     def score_ann_df(self):
         # add snp annotation to snp score table and flat
         logger.info('Annotating snp score...')
-        self._score_ann_df = self.score_df.merge(
+        ann_score_df = self.score_df.sort_values(['snp_score'],
+                                                 ascending=False)
+        ann_score_df = ann_score_df[:100]
+        self._score_ann_df = ann_score_df.merge(
             self.snp_window_ann_df,
             left_on=['Chrom', 'Start', 'End'],
             right_on=['Chrom', 'Start', 'End'],
@@ -244,7 +254,7 @@ class snpScoreBox:
                 score_plot(self.score_file, method,
                            f'{score_name}.{method_name}', self.chr_size))
             self.score_ann_file = self.outdir / \
-                f'{score_name}.{method}.score.ann.csv'
+                f'{score_name}.{method}.score.top{self.ann_region_num}.ann.csv'
             if not self.score_ann_file.is_file():
                 self.score_ann_df.to_csv(self.score_ann_file, index=False)
                 if self.save_mem:
@@ -289,6 +299,23 @@ class qtlSeqr:
     web = attr.ib(default=False)
 
     @property
+    def filePath(self):
+        filename_els = ['qtlseqr']
+        if self.run_ed:
+            filename_els.append('ed')
+        params_els = []
+        if self.run_qtlseqr:
+            window_m = int(self.window / 1e6)
+            params_els.append(f'window_{window_m}M')
+            params_els.append(f'popStru_{self.pop_stru}')
+        params_els.append(f'refFreq_{self.ref_freq}')
+        params_els.append(f'minDepth_{self.min_sample_dp}')
+        filename_els.extend(params_els)
+        filename_els.append('csv')
+        filename = '.'.join(filename_els)
+        return self.out_dir / filename
+
+    @property
     def qtlseqr_job(self):
         cmd_flag = ''
         if self.run_qtlseqr:
@@ -302,14 +329,23 @@ class qtlSeqr:
             plot_r = QTLSEQR_PLOT_WEB
         else:
             plot_r = QTLSEQR_PLOT
-        cmd_line = (f'Rscript {plot_r} '
-                    f'--input {self.input_table} '
-                    f'--high_bulk {MUT_NAME} '
-                    f'--low_bulk {WILD_NAME} '
-                    f'--out_dir {self.out_dir} '
-                    f'--window {self.window} '
-                    f'--ref_freq {self.ref_freq} '
-                    f'--min_sample_dp {self.min_sample_dp} '
-                    f'--pop_stru {self.pop_stru} '
-                    f'{cmd_flag}')
-        return cmd_line
+        if self.filePath.is_file():
+            return None
+        else:
+            cmd_line = (f'Rscript {plot_r} '
+                        f'--input {self.input_table} '
+                        f'--high_bulk {MUT_NAME} '
+                        f'--low_bulk {WILD_NAME} '
+                        f'--out_dir {self.filePath} '
+                        f'--window {self.window} '
+                        f'--ref_freq {self.ref_freq} '
+                        f'--min_sample_dp {self.min_sample_dp} '
+                        f'--pop_stru {self.pop_stru} '
+                        f'{cmd_flag}')
+            return cmd_line
+
+    @property
+    def launch_job(self):
+        job_cmd = self.qtlseqr_job
+        if job_cmd:
+            os.system(job_cmd)

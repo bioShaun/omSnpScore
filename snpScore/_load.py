@@ -301,6 +301,8 @@ class snpTableMP(snpTable):
                     table_i_df = pd.read_csv(table_i)
                     sample_name = Path(table_i).parent.name
                     table_i_df.loc[:, 'sample_id'] = sample_name
+                    # filter multi alt snp
+                    table_i_df = table_i_df[~table_i_df.Alt.str.contains(",")]
                     table_i_df = table_i_df.set_index(
                         ['Chr', 'Pos', 'Alt',
                          'sample_id']).unstack('sample_id')
