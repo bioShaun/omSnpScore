@@ -37,6 +37,7 @@ setup(
         'scripts/splitVcf',
     ],
     install_requires=[
+        'fire',
         'click',
         'pandas',
         'loguru',
