@@ -6,12 +6,14 @@ from snpScore import tableFromVcf
 
 ANN_TABLE_COL = ("#CHROM", "POS", "REF", "ALT", "INFO")
 
+def getAnn(info):
+    return info.split('ANN=')[1]
 
 def vcfAnn(vcfFile, annoFile):
-    vcf_df = pd.read_csv(vcfFile, sep='\t', header=None, comment="#")
-    ann_df = vcf_df.loc[:, [0, 1, 3, 4, 7]]
+    ann_df = pd.read_csv(vcfFile, sep='\t', header=None, comment="#")
+    ann_df = ann_df.loc[:, [0, 1, 3, 4, 7]]
     ann_df.columns = ANN_TABLE_COL
-    ann_df.loc[:, 'INFO'] = [each.split('ANN=')[1] for each in ann_df.INFO]
+    ann_df.loc[:, 'INFO'] = ann_df.INFO.map(getAnn)
     ann_df.to_pickle(annoFile)
 
 

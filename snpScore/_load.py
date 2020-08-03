@@ -30,6 +30,7 @@ class tableFromVcf:
             if eachline[:6] == '#CHROM':
                 # WARNING: changing of VCF format could output wrong names
                 return eachline.strip().split('\t')[VCF_SAMPLE_INDEX:]
+        vcf_inf.close()
 
     @property
     def samples(self):
