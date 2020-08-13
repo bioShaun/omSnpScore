@@ -236,6 +236,10 @@ class snpTable:
                                                             left_index=True,
                                                             right_index=True)
                 self._alt_freq_df = self._alt_freq_df.reset_index()
+                self._alt_freq_df.loc[:, 'Chr'] = self._alt_freq_df.Chr.astype(
+                    'str')
+                self._alt_freq_df.sort_values(
+                    ['Chr', 'Pos'], inplace=True)
                 if self.save_table:
                     self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
         return self._alt_freq_df
