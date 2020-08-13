@@ -202,15 +202,15 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
         run_jobs.append(qtlseqr_obj.qtlseqr_job)
         qtlseqr_file = qtlseqr_obj.filePath
         plot_cmd.append(
-            score_plot(qtlseqr_file, 'snpIndex', qtlseqr_file.stem, CHR_SIZE,
+            score_plot(qtlseqr_file, 'snpIndex', qtlseqr_file.stem, chr_size,
                        'web'))
         if qtlseqr:
             plot_cmd.append(
-                score_plot(qtlseqr_file, 'Gprime', qtlseqr_file.stem, CHR_SIZE,
+                score_plot(qtlseqr_file, 'Gprime', qtlseqr_file.stem, chr_size,
                            'web'))
         if ed:
             plot_cmd.append(
-                score_plot(qtlseqr_file, 'ED', qtlseqr_file.stem, CHR_SIZE,
+                score_plot(qtlseqr_file, 'ED', qtlseqr_file.stem, chr_size,
                            'web'))
 
     run_jobs.extend(snpscore_obj.score_jobs)
