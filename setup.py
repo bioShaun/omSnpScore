@@ -35,6 +35,7 @@ setup(
         'scripts/snpScore-mp-cli',
         'scripts/snpScore-bychr-cli',
         'scripts/splitVcf',
+        'scripts/snpScore-mp2',
     ],
     install_requires=[
         'fire',
@@ -46,7 +47,7 @@ setup(
         'numpy',
         'tables',
         'attrs',
-	'jinja2',
+        'jinja2',
     ],
 )
 
