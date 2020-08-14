@@ -312,6 +312,16 @@ class qtlSeqr:
         return self.out_dir / filename
 
     @property
+    def edFileName(self):
+        return f'ed.refFreq_{self.ref_freq}.minDepth_{self.min_sample_dp}.csv'
+
+    @property
+    def qtlseqrFileName(self):
+        window_m = int(self.window / 1e6)
+        return (f'qtlseqr.window_{window_m}M.popStru_{self.pop_stru}.'
+                f'refFreq_{self.ref_freq}.minDepth_{self.min_sample_dp}.csv')
+
+    @property
     def qtlseqr_job(self):
         cmd_flag = ''
         if self.run_qtlseqr:

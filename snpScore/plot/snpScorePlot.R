@@ -122,22 +122,28 @@ ed_plot <- function(plot.df, breaks, cutoff, labelpos) {
     }
 
 
+qtlseqr_data <- function(field) {
+    var_table_df <- data.frame(var_table_df)
+    var_table_df$SNP <- paste(var_table_df$CHROM, var_table_df$POS, sep = ':')    
+    plot_data <- var_table_df[, c('SNP', 'CHROM', 'POS', field)]
+    if (!(is.na(chr.size))) {
+        chr.size.df <- read.delim(chr.size, header=F, col.names=c('CHROM', 'POS'))
+        chr.size.df$SNP <- paste(chr.size.df$CHROM, chr.size.df$POS, sep = ':')
+        chr.size.df[, field] <- 0
+        chr.size.df <- chr.size.df[, c('SNP', 'CHROM', 'POS', field)]
+        plot_data <- rbind(plot_data, chr.size.df)
+        plot_data <- arrange(plot_data, CHROM, POS)
+    }
+    plot_data$CHROM <- str_remove(plot_data$CHROM, fixed('chr', ignore_case = T))
+    plot_data <- filter(plot_data, CHROM != "Un")
+    return(plot_data)
+}
+
+
 qtlseqr_plot <- function(field, ylab, suffix, fdrT=0.05) {
 
     if (field %in% colnames(var_table_df)) {
-        var_table_df <- data.frame(var_table_df)
-        var_table_df$SNP <- paste(var_table_df$CHROM, var_table_df$POS, sep = ':')    
-        plot_data <- var_table_df[, c('SNP', 'CHROM', 'POS', field)]
-        if (!(is.na(chr.size))) {
-            chr.size.df <- read.delim(chr.size, header=F, col.names=c('CHROM', 'POS'))
-            chr.size.df$SNP <- paste(chr.size.df$CHROM, chr.size.df$POS, sep = ':')
-            chr.size.df[, field] <- 0
-            chr.size.df <- chr.size.df[, c('SNP', 'CHROM', 'POS', field)]
-            plot_data <- rbind(plot_data, chr.size.df)
-            plot_data <- arrange(plot_data, CHROM, POS)
-        }
-        plot_data$CHROM <- str_remove(plot_data$CHROM, fixed('chr', ignore_case = T))
-        plot_data <- filter(plot_data, CHROM != "Un")
+        plot_data <- qtlseqr_data(field)
         output_prefix = paste(output_prefix, suffix, sep='.')
         omsCMplot(plot_data,plot.type="m",LOG10=F,col = wheat_cols,
                     chr.den.col=NULL,file="jpg",memo="test",dpi=300,ylab = ylab,
@@ -221,7 +227,7 @@ if (plot_type == 'density') {
     qtlseqr_plot('Gprime', "G' value", 'Gprime.plot')
 } else if (plot_type == 'snpIndex'){
     qtlseqr_snp_index_plot()
-} else if (plot_type == 'ED'){
+} else if (plot_type == 'ED-old'){
     if ('fitted' %in% colnames(var_table_df))  {
         var_table_df <- data.frame(var_table_df)
         var_table_df <- filter(var_table_df, CHROM != "chrUn")
@@ -251,7 +257,15 @@ if (plot_type == 'density') {
             out_prefix, plot_type = 'pdf', width = 10)
         }
     }
-} else {
+} else if (plot_type == 'ED'){
+    field <- c('fitted', 'unfitted')
+    plot_data <- qtlseqr_data(field)
+    ylab <- substitute("ED"^p, list(p=4))
+    omsCMplot(plot_data,plot.type="m", multracks=TRUE, LOG10=F,col = wheat_cols,
+                chr.den.col=NULL,file="jpg",memo="",dpi=300,ylab = ylab,
+                out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title,
+                amplify=F, signal.col=NULL,cex=0.6)    
+} else if (plot_type == 'var'){
   var_table_df$Start <- var_table_df$Start + 1
   var_table_df$SNP <- paste(var_table_df$Chrom, var_table_df$Start, sep = ':')
   plot_data <- var_table_df[, c('SNP', 'Chrom', 'Start', 'snp_score')]
@@ -274,6 +288,8 @@ if (plot_type == 'density') {
                 out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
   }
 
+} else {
+    print('unsuported plot type.')
 }
 
 

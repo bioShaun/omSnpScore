@@ -32,6 +32,7 @@ QTLSEQR_PLOT = script_dir / 'plot/run_qtlseqr.R'
 QTLSEQR_PLOT_WEB = script_dir / 'plot/run_qtlseqr_web.R'
 DATA_DIR = PurePath(pkg_resources.resource_filename('snpScore', 'data'))
 CHR_SIZE = DATA_DIR / 'chr.size'
+CHR_WINDOW = DATA_DIR / 'chr.1m.window.bed'
 
 OFFSET = 1e-05
 SNP_FREQ_BIAS = 0.1

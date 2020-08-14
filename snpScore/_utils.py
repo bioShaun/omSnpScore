@@ -314,12 +314,12 @@ def score_plot(score_file,
                chr_size="",
                platform="local"):
     out_prefix = score_file.with_suffix('.plot')
-    if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density']:
+    if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density', 'ED']:
         out_plot = score_file.with_suffix('.plot.jpg')
     elif method == 'snp_index':
         out_plot = score_file.with_suffix('')
         out_prefix = out_plot
-    elif method in ['ED', 'snpIndex', 'Gprime']:
+    elif method in ['snpIndex', 'Gprime']:
         out_prefix = score_file.parent / plot_title
         if method == 'Gprime':
             out_plot = score_file.with_suffix(f'.{method}.plot.jpg')
@@ -441,18 +441,46 @@ def wrap_param_arg(args):
         yield arg_i
 
 
-def merge_split_file(file_dir, file_pattern, sortby=None):
+def merge_snp_density_allele(df: pd.DataFrame) -> pd.DataFrame:
+    for allele in ['mutant', 'wild']:
+        df.loc[:,
+               f'{allele}.AD'] = df[f'{allele}.REF.AD'].astype('str').str.cat(
+                   df[f'{allele}.ALT.AD'].astype('str'), sep='|')
+        df.drop([f'{allele}.REF.AD', f'{allele}.ALT.AD'], axis=1, inplace=True)
+    return df
+
+
+def merge_split_file(file_dir,
+                     file_pattern,
+                     sortby=None,
+                     out_dir=None,
+                     input_header='infer',
+                     input_sep=',',
+                     out_header=True,
+                     out_sep=','):
     pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
     df_list = []
     for file_i in pattern_file:
         # if file_i.name not in exist_file_name:
-        df_list.append(pd.read_csv(file_i))
-    outfile = Path(file_dir) / file_pattern
+        df_list.append(pd.read_csv(file_i, header=input_header, sep=input_sep))
+    if out_dir is None:
+        out_dir = Path(file_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    outfile = Path(out_dir) / file_pattern
     df = pd.concat(df_list)
     if sortby:
         df.sort_values(sortby, inplace=True)
+    if '.snp.freq.csv' in file_pattern:
+        df = merge_snp_density_allele(df)
     if not outfile.is_file():
-        df.to_csv(outfile, index=False)
+        if 'qtlseqr' in file_pattern:
+            df.to_csv(outfile, index=False)
+        else:
+            df.to_csv(outfile,
+                      index=False,
+                      float_format='%.3f',
+                      header=out_header,
+                      sep=out_sep)
     return outfile
 
 
@@ -505,9 +533,12 @@ def circos_suffix(varscore_prefix, qtlseq_prefix):
     return f'{varscore_prefix}-{qtlseq_prefix}'
 
 
-def circos_cfg(circos_prefix):
+def circos_cfg(circos_prefix, circos_path: Path = None) -> Path:
     circos_prefix.mkdir(parents=True, exist_ok=True)
-    circos_path = circos_prefix.parent.parent
+    if circos_path is None:
+        circos_path = circos_prefix.parent.parent
+    else:
+        circos_path.mkdir(parents=True, exist_ok=True)
     circos_file = f'{circos_prefix.name}.circos.png'
     # jinja2 load template
     PLOT_DIR = PurePath(__file__).parent / 'plot'
@@ -529,3 +560,54 @@ def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
     circos_sh = PurePath(__file__).parent / 'plot' / 'data2circos.sh'
     cmd = f'sh {circos_sh} {varScore_csv} {qtlseqr_ed_csv} {snp_freq_csv} {out_prefix}'
     return cmd
+
+
+def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
+                          edFile: Path) -> None:
+    df = pd.read_csv(qtlseqrFile)
+    col_map = {
+        'LOW.FREQ': 'wild.FREQ',
+        'DP.LOW': 'wild.DP',
+        'SNPindex.LOW': 'wild.SNPindex',
+        'HIGH.FREQ': 'mutant.FREQ',
+        'DP.HIGH': 'mutant.LOW',
+        'SNPindex.HIGH': 'mutant.SNPindex',
+    }
+    ad_cols = [each for each in df.columns if 'AD' in each]
+    df.rename(columns=col_map, inplace=True)
+    df.drop(ad_cols, axis=1, inplace=True)
+    for col_i in [
+            'pvalue', 'negLog10Pval', 'qvalue', 'euc', 'fitted', 'unfitted',
+            'dis2edcutoff'
+    ]:
+        df.loc[:, col_i] = df[col_i].astype('str')
+
+    if 'euc' in df.columns:
+        ed_extend_cols = ['euc', 'fitted', 'unfitted', 'dis2edcutoff']
+        basic_cols = [
+            'CHROM', 'POS', 'ALT', 'wild.FREQ', 'wild.DP', 'wild.SNPindex',
+            'mutant.FREQ', 'mutant.LOW', 'mutant.SNPindex', 'REF_FRQ'
+        ]
+        ed_cols = basic_cols + ed_extend_cols
+        ed_df = df.loc[:, ed_cols].copy()
+        if not edFile.is_file():
+            ed_df.to_csv(edFile, index=False, float_format='%.3f')
+
+    if 'Gprime' in df.columns:
+        df.drop(ed_extend_cols, axis=1, inplace=True)
+        if not qtlseqrAloneFile.is_file():
+            df.to_csv(qtlseqrAloneFile, index=False, float_format='%.3f')
+
+
+def snp_density_stats(window_bed: Path, snp_density_bed: Path,
+                      density_stats_file: Path) -> None:
+    if not density_stats_file.is_file():
+        window_bed = BedTool(str(window_bed))
+        snp_bed = BedTool(str(snp_density_bed))
+        cov_res = window_bed.coverage(snp_bed, counts=True)
+        cov_str = StringIO(str(cov_res))
+        cov_df = pd.read_csv(cov_str,
+                             sep='\t',
+                             header=None,
+                             names=['chrom', 'start', 'end', 'variantCount'])
+        cov_df.to_csv(density_stats_file, index=False)
