@@ -7,6 +7,7 @@ import pandas as pd
 from io import StringIO
 from loguru import logger
 from decimal import Decimal, getcontext
+from typing import List
 from pathlib import Path, PurePath
 from functools import reduce
 from pybedtools import BedTool
@@ -506,18 +507,21 @@ def printdf(df):
 
 def freq2qtlseqr(snpfreq):
     snpfreq = Path(snpfreq)
-    snpfreq_df = pd.read_csv(snpfreq)
-
-    def rename_col(col_i):
-        pos_map = {'Chr': 'CHROM', 'Pos': 'POS', 'Alt': 'ALT'}
-        if pos_map.get(col_i):
-            return pos_map[col_i]
-        else:
-            return re.sub(r"(\w+).(\w+).AD", r"AD_\2.\1", col_i)
-
-    snpfreq_df.columns = [rename_col(col_i) for col_i in snpfreq_df.columns]
     qtlseqr_table = snpfreq.with_suffix('.qtlseqr.csv')
-    snpfreq_df.to_csv(qtlseqr_table, index=False)
+    if not qtlseqr_table.is_file():
+        snpfreq_df = pd.read_csv(snpfreq)
+
+        def rename_col(col_i):
+            pos_map = {'Chr': 'CHROM', 'Pos': 'POS', 'Alt': 'ALT'}
+            if pos_map.get(col_i):
+                return pos_map[col_i]
+            else:
+                return re.sub(r"(\w+).(\w+).AD", r"AD_\2.\1", col_i)
+
+        snpfreq_df.columns = [
+            rename_col(col_i) for col_i in snpfreq_df.columns
+        ]
+        snpfreq_df.to_csv(qtlseqr_table, index=False)
     return qtlseqr_table
 
 
@@ -580,7 +584,8 @@ def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
             'pvalue', 'negLog10Pval', 'qvalue', 'euc', 'fitted', 'unfitted',
             'dis2edcutoff'
     ]:
-        df.loc[:, col_i] = df[col_i].astype('str')
+        if col_i in df.columns:
+            df.loc[:, col_i] = df[col_i].astype('str')
 
     if 'euc' in df.columns:
         ed_extend_cols = ['euc', 'fitted', 'unfitted', 'dis2edcutoff']
@@ -594,12 +599,13 @@ def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
             ed_df.to_csv(edFile, index=False, float_format='%.3f')
 
     if 'Gprime' in df.columns:
-        df.drop(ed_extend_cols, axis=1, inplace=True)
+        if 'euc' in df.columns:
+            df.drop(ed_extend_cols, axis=1, inplace=True)
         if not qtlseqrAloneFile.is_file():
             df.to_csv(qtlseqrAloneFile, index=False, float_format='%.3f')
 
 
-def snp_density_stats(window_bed: Path, snp_density_bed: Path,
+def snp_density_stats(window_bed: PurePath, snp_density_bed: Path,
                       density_stats_file: Path) -> None:
     if not density_stats_file.is_file():
         window_bed = BedTool(str(window_bed))
@@ -611,3 +617,8 @@ def snp_density_stats(window_bed: Path, snp_density_bed: Path,
                              header=None,
                              names=['chrom', 'start', 'end', 'variantCount'])
         cov_df.to_csv(density_stats_file, index=False)
+
+
+def cp_files(fileList: List[Path], outPath: Path) -> None:
+    for file_i in fileList:
+        shutil.copy(file_i, outPath)

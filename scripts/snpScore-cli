@@ -9,6 +9,7 @@ from snpScore import snpTable, async_batch_sh_jobs
 from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 from snpScore import freq2qtlseqr
 from snpScore import score_plot
+from snpScore import cp_files, CHR_WINDOW
 from snpScore import split_qtlseqr_results, snp_density_stats
 
 
@@ -189,6 +190,8 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
 
     run_jobs = []
     plot_cmd = []
+
+    run_jobs.extend(snpscore_obj.score_jobs)
     if qtlseqr or ed:
         qtlseqr_snp_table = freq2qtlseqr(snp_table_obj.alt_freq_file)
         qtlseqr_obj = qtlSeqr(input_table=qtlseqr_snp_table,
@@ -201,20 +204,6 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
                               run_ed=ed,
                               web=True)
         run_jobs.append(qtlseqr_obj.qtlseqr_job)
-        qtlseqr_file = qtlseqr_obj.filePath
-        plot_cmd.append(
-            score_plot(qtlseqr_file, 'snpIndex', qtlseqr_file.stem, chr_size,
-                       'web'))
-        if qtlseqr:
-            plot_cmd.append(
-                score_plot(qtlseqr_file, 'Gprime', qtlseqr_file.stem, chr_size,
-                           'web'))
-        if ed:
-            plot_cmd.append(
-                score_plot(qtlseqr_file, 'ED', qtlseqr_file.stem, chr_size,
-                           'web'))
-
-    run_jobs.extend(snpscore_obj.score_jobs)
     run_jobs = list(filter(None, run_jobs))
     logger.info('Launch snpScore jobs...')
     if run_jobs:
@@ -225,12 +214,60 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
 
     # 整理结果
     ann_number = 100
+    outPath = Path(outdir)
+    outdir_name = outPath.name
+    results_dir = outPath / f'{outdir_name}-results'
 
-    results_dir = Path(outdir) / 'results'
+    # snpDensity results
+    logger.info('copy snpDensity files...')
+    snp_density_dir = results_dir / 'snpDensity'
+    snp_density_dir.mkdir(parents=True, exist_ok=True)
+    snp_density_file = outPath / f"{snpscore_obj.group_label}.snp.freq.csv"
+    snp_density_plt_file = snp_density_file.with_suffix('.plot.jpg')
+    snp_freq_bed = outPath / f"{snpscore_obj.group_label}.snp.plot.bed"
+    snp_freq_stats = snp_density_file.with_suffix('.stats.csv')
+    snp_density_stats(CHR_WINDOW, snp_freq_bed, snp_freq_stats)
+    cp_files([snp_density_file, snp_density_plt_file, snp_freq_stats],
+             snp_density_dir)
+
+    # varscore results
+    logger.info('copy varBScore files...')
     varBScore_dir = results_dir / 'varBScore'
-    snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
-    snp_score_ann_file_pattern = f'{snpscore_obj.score_prefix}.var.score.top{ann_number}.ann.csv'
+    varBScore_dir.mkdir(parents=True, exist_ok=True)
+    snp_score_file = outPath / f'{snpscore_obj.score_prefix}.var.score.csv'
+    snp_score_ann_file = outPath / f'{snpscore_obj.score_prefix}.var.score.top{ann_number}.ann.csv'
+    snp_score_plt = snp_score_file.with_suffix('.plot.jpg')
+    cp_files([snp_score_file, snp_score_ann_file, snp_score_plt],
+             varBScore_dir)
 
+    if qtlseqr or ed:
+        qtlseqr_plot_cmd = []
+        qtlseqr_file = qtlseqr_obj.filePath
+        # qtlseqr
+        qtlSeqrDir = results_dir / 'QTLseqr'
+        if qtlseqr:
+            qtlSeqrDir.mkdir(parents=True, exist_ok=True)
+        qtlSeqrDirFile = qtlSeqrDir / qtlseqr_obj.qtlseqrFileName
+        # ed
+        edDir = results_dir / 'ed'
+        if ed:
+            edDir.mkdir(parents=True, exist_ok=True)
+        edFile = edDir / qtlseqr_obj.edFileName
+        split_qtlseqr_results(qtlseqr_file, qtlSeqrDirFile, edFile)
+        if qtlSeqr:
+            qtlseqr_plot_cmd.append(
+                score_plot(qtlSeqrDirFile, 'snpIndex', qtlSeqrDirFile.stem,
+                           chr_size, 'web'))
+            qtlseqr_plot_cmd.append(
+                score_plot(qtlSeqrDirFile, 'Gprime', qtlSeqrDirFile.stem,
+                           chr_size, 'web'))
+        if ed:
+            qtlseqr_plot_cmd.append(
+                score_plot(edFile, 'ED', edFile.stem, chr_size, 'web'))
+        qtlseqr_plot_cmd = list(filter(None, qtlseqr_plot_cmd))
+        logger.info('Launch qtlseqr plot jobs...')
+        if qtlseqr_plot_cmd:
+            async_batch_sh_jobs(qtlseqr_plot_cmd, thread=thread)
     logger.info('The End.')
 
 
