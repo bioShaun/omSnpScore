@@ -9,6 +9,7 @@ from snpScore import snpTable, async_batch_sh_jobs
 from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 from snpScore import freq2qtlseqr
 from snpScore import score_plot
+from snpScore import split_qtlseqr_results, snp_density_stats
 
 
 @click.command()
@@ -221,6 +222,14 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
     plot_cmd = list(filter(None, plot_cmd))
     if plot_cmd:
         async_batch_sh_jobs(plot_cmd, thread=thread)
+
+    # 整理结果
+    ann_number = 100
+
+    results_dir = Path(outdir) / 'results'
+    varBScore_dir = results_dir / 'varBScore'
+    snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
+    snp_score_ann_file_pattern = f'{snpscore_obj.score_prefix}.var.score.top{ann_number}.ann.csv'
 
     logger.info('The End.')
 
