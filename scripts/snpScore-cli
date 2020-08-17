@@ -71,6 +71,10 @@ from snpScore import split_qtlseqr_results, snp_density_stats
               help='chr size file, default is chr size of bread wheat.',
               type=click.Path(exists=True, dir_okay=False),
               default=CHR_SIZE)
+@click.option('--chr_window',
+              help='chr 1m window file, to generate snpDensity stats.',
+              type=click.Path(exists=True, dir_okay=False),
+              default=CHR_WINDOW)
 @click.option('--vcf_split_dir',
               help=('Directory to save snp pickle file for each sample.'
                     'Default is outdir/pickle'),
@@ -144,7 +148,7 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
          wild_alt_exp, min_depth, snp_number_window, snp_number_step,
          vcf_ann_file, qtlseqr_window, ref_freq, pop_stru, qtlseqr, ed,
          p_ref_freq, background_ref_freq, chr_size, qtlseqr_ref_freq,
-         qtlseqr_min_depth):
+         qtlseqr_min_depth, chr_window):
     if vcf_file or vcf_table:
         vcf_dir = list(vcf_dir)
         if vcf_split_dir is None:
@@ -225,10 +229,14 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
     snp_density_file = outPath / f"{snpscore_obj.group_label}.snp.freq.csv"
     snp_density_plt_file = snp_density_file.with_suffix('.plot.jpg')
     snp_freq_bed = outPath / f"{snpscore_obj.group_label}.snp.plot.bed"
-    snp_freq_stats = snp_density_file.with_suffix('.stats.csv')
-    snp_density_stats(CHR_WINDOW, snp_freq_bed, snp_freq_stats)
-    cp_files([snp_density_file, snp_density_plt_file, snp_freq_stats],
-             snp_density_dir)
+    snp_density_file_list = [snp_density_file, snp_density_plt_file]
+    if Path(chr_window).is_file():
+        snp_freq_stats = snp_density_file.with_suffix('.stats.csv')
+        snp_density_stats(chr_window, snp_freq_bed, snp_freq_stats)
+        snp_density_file_list.append(snp_freq_stats)
+    else:
+        logger.warning(f'chromosome window file is not valid: {chr_window}...')
+    cp_files(snp_density_file_list, snp_density_dir)
 
     # varscore results
     logger.info('copy varBScore files...')
