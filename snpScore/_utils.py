@@ -264,7 +264,7 @@ def mut_wild_ext_freq(intersect_df, freq_dict, mut='alt'):
         return intersect_df
 
 
-def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
+def cal_score(intersect_df, freq_dict, method='var', min_snp_num=3):
     stats_cols = [
         'Chrom', 'Start', 'End', SnpGroupFreq.mut.value,
         SnpGroupFreq.wild.value
@@ -275,6 +275,7 @@ def cal_score(intersect_df, freq_dict, method='var', min_snp_num=5):
     if method == 'var':
         varscore_df = stats_df.groupby(['Chrom', 'Start',
                                         'End']).agg(lambda x: np.var(x))
+
     elif 'est' in method:
         stats_df = stats_df.set_index(['Chrom', 'Start', 'End'])
         alt_freq_df = stats_df.copy()
