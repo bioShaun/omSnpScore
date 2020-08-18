@@ -160,29 +160,51 @@ qtlseqr_plot <- function(field, ylab, suffix, fdrT=0.05) {
 qtlseqr_snp_index_plot <- function() {
     var_table_df <- filter(var_table_df, CHROM != "chrUn")
     var_table_df$POS <- var_table_df$POS / 1e6
-    var_table_df$chrom_genome <- str_extract(var_table_df$CHROM, "chr\\d")
-    var_table_df$chrom_num <- str_remove(var_table_df$CHROM, "chr\\d")
-    snp_index_df <- melt(var_table_df, id.vars = c("chrom_genome", "chrom_num", "POS"), 
-                        measure.vars = c("tricubeDeltaSNP"))
+    if ('chr1A' %in% var_table_df$CHROM) {
+
+        var_table_df$chrom_genome <- str_extract(var_table_df$CHROM, "chr\\d")
+        var_table_df$chrom_num <- str_remove(var_table_df$CHROM, "chr\\d")
+        snp_index_df <- melt(var_table_df, id.vars = c("chrom_genome", "chrom_num", "POS"), 
+                            measure.vars = c("tricubeDeltaSNP"))
+        plot_width = 14
+        plot_height = 6
+    } else {
+        snp_index_df <- var_table_df
+        snp_index_df <- melt(var_table_df, id.vars = c("CHROM", "POS"), 
+                            measure.vars = c("tricubeDeltaSNP"))
+        chrom_num <- length(unique(snp_index_df$CHROM))
+        plot_width <- ceiling(sqrt(chrom_num)) * 3
+        plot_height = ceiling(sqrt(chrom_num)) * 1.5   
+    }
     
     snp_index_col <- brewer.pal(3, 'Set1')
     names(snp_index_col) <- c('tricubeDeltaSNP', "CI_95", "CI_99")
-    ints_df <-
-    dplyr::select(var_table_df, chrom_genome, chrom_num, POS, dplyr::matches("CI_")) %>% tidyr::gather(key = "Interval", value = "value",-chrom_genome, -chrom_num,-POS)
+    if ('chr1A' %in% var_table_df$CHROM) {
+        ints_df <-
+            dplyr::select(var_table_df, chrom_genome, chrom_num, POS, dplyr::matches("CI_")) %>% tidyr::gather(key = "Interval", value = "value",-chrom_genome, -chrom_num,-POS)
+    } else {
+        ints_df <-
+            dplyr::select(var_table_df, CHROM, POS, dplyr::matches("CI_")) %>% tidyr::gather(key = "Interval", value = "value",-CHROM,-POS) 
+    }
 
     p <- ggplot(snp_index_df, aes(POS, value, color=variable)) +
     geom_line() + 
     geom_line(data = ints_df, aes(POS, value, color=Interval)) +
     geom_line(data = ints_df, aes(POS, -value, color=Interval)) +
-    facet_grid(chrom_num~chrom_genome, scales = "free_x") +
     theme_bw() + theme(strip.text.y = element_text(angle = 0)) +
     scale_color_manual(values = snp_index_col) +
     xlab("Genomic Position (Mb)") + ylab(expression(Delta * '(SNP-index)')) +
     guides(color=guide_legend(title = "")) + ggtitle(plot_title)
+
+    if ('chr1A' %in% var_table_df$CHROM) {
+      p <- p + facet_grid(chrom_num~chrom_genome, scales = "free_x")
+    } else {
+      p <- p + facet_wrap(.~CHROM, scales = "free_x")
+    }
     output_prefix = paste(output_prefix, 'snpIndex.plot', sep='.')
-    ggsave(filename = paste(output_prefix, 'png', sep = '.'), plot=p, width = 14, height = 6)
+    ggsave(filename = paste(output_prefix, 'png', sep = '.'), plot=p, width = plot_width, height = plot_height)
     if (! is_web) {
-        ggsave(filename = paste(output_prefix, 'pdf', sep = '.'), plot=p, width = 14, height = 6)
+        ggsave(filename = paste(output_prefix, 'pdf', sep = '.'), plot=p, width = plot_width, height = plot_height)
     }
 
 
@@ -190,6 +212,10 @@ qtlseqr_snp_index_plot <- function() {
 
 
 var_table_df <- fread(var_table)
+if (!(is.na(chr.size))) {
+    chr.size.df <- read.delim(chr.size, header=F, col.names=c('Chrom', 'Start'))
+    var_table_df$CHROM <- factor(var_table_df$CHROM, levels = chr.size.df$Chrom)
+}
 
 if (plot_type == 'density') {
   var_table_df$SNP <- paste(var_table_df$Chr, var_table_df$Pos, sep = ':')
