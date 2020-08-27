@@ -575,12 +575,14 @@ def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
         'DP.LOW': 'wild.DP',
         'SNPindex.LOW': 'wild.SNPindex',
         'HIGH.FREQ': 'mutant.FREQ',
-        'DP.HIGH': 'mutant.LOW',
+        'DP.HIGH': 'mutant.DP',
         'SNPindex.HIGH': 'mutant.SNPindex',
     }
     ad_cols = [each for each in df.columns if 'AD' in each]
+    redut_cols = ['wild.FREQ', 'mutant.FREQ']
     df.rename(columns=col_map, inplace=True)
     df.drop(ad_cols, axis=1, inplace=True)
+    df.drop(redut_cols, axis=1, inplace=True)
     for col_i in [
             'pvalue', 'negLog10Pval', 'qvalue', 'euc', 'fitted', 'unfitted',
             'dis2edcutoff'
@@ -591,8 +593,8 @@ def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
     if 'euc' in df.columns:
         ed_extend_cols = ['euc', 'fitted', 'unfitted', 'dis2edcutoff']
         basic_cols = [
-            'CHROM', 'POS', 'ALT', 'wild.FREQ', 'wild.DP', 'wild.SNPindex',
-            'mutant.FREQ', 'mutant.LOW', 'mutant.SNPindex', 'REF_FRQ'
+            'CHROM', 'POS', 'ALT', 'wild.DP', 'wild.SNPindex', 'mutant.DP',
+            'mutant.SNPindex', 'REF_FRQ'
         ]
         ed_cols = basic_cols + ed_extend_cols
         ed_df = df.loc[:, ed_cols].copy()
