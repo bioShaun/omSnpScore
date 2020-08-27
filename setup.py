@@ -36,6 +36,8 @@ setup(
         'scripts/snpScore-bychr-cli',
         'scripts/splitVcf',
         'scripts/snpScore-mp2',
+        'scripts/snpScore-mp2-test',
+        'scripts/snpScore-bychr-test',
     ],
     install_requires=[
         'fire',
