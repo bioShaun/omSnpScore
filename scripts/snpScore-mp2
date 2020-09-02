@@ -100,7 +100,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     plot_cmd = []
 
     # varBScore
-    varBScore_dir = results_dir / 'varBScore'
+    varBScore_dir = results_dir / '2.varBScore'
     snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
     snp_score_file = merge_split_file(results_dir,
                                       snp_score_file_pattern,
@@ -116,7 +116,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                                           out_dir=varBScore_dir)
 
     # SNP DENSITY
-    snp_freq_dir = results_dir / 'snpDensity'
+    snp_freq_dir = results_dir / '1.SNP_Density'
     snp_freq_file = merge_split_file(
         results_dir,
         f"{snpscore_obj.group_label}.snp.freq.csv",
@@ -151,9 +151,9 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     qtlseqr_file = merge_split_file(results_dir,
                                     qtlseqr_obj.filePath.name,
                                     sortby=["CHROM", "POS"])
-    qtlSeqrDir = results_dir / 'QTLseqr'
+    qtlSeqrDir = results_dir / '4.QTLseqr'
     qtlSeqrDir.mkdir(parents=True, exist_ok=True)
-    edDir = results_dir / 'ed'
+    edDir = results_dir / '3.ed'
     edDir.mkdir(parents=True, exist_ok=True)
 
     qtlSeqrDirFile = qtlSeqrDir / qtlseqr_obj.qtlseqrFileName
@@ -171,7 +171,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
         circos_name = circos_suffix(snpscore_obj.score_prefix,
                                     qtlseqr_obj.filePath.stem)
         circos_dir = results_dir / 'circos_data' / circos_name
-        circos_outdir = results_dir / 'circosPlot'
+        circos_outdir = results_dir / '5.circosPlot'
         circos_plot_path = circos_cfg(circos_dir, circos_path=circos_outdir)
         if not circos_plot_path.is_file():
             plot_cmd.append(
