@@ -113,6 +113,7 @@ def snp_ann_pipe(gene_bed,
                                     sample_label=group_list,
                                     min_depth=min_depth,
                                     filter_dp_grp=group_list,
+                                    merge_method='outer',
                                     save_table=False)
     else:
         snp_table_obj = snpAnnTableByChr(out_dir=outdir,
@@ -122,6 +123,7 @@ def snp_ann_pipe(gene_bed,
                                          min_depth=min_depth,
                                          filter_dp_grp=group_list,
                                          save_table=False,
+                                         merge_method='outer',
                                          chrom=chrom)
 
     snp_inf_df = snp_table_obj.alt_freq_df

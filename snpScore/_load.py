@@ -116,6 +116,7 @@ class snpTable:
     min_depth = attr.ib(default=5, converter=int)
     filter_dp_grp = attr.ib(default=[MUT_NAME, WILD_NAME])
     save_table = attr.ib(default=True)
+    merge_method = attr.ib(default='inner')
 
     def __attrs_post_init__(self):
         self._ad_df = None
@@ -166,9 +167,11 @@ class snpTable:
                 self.ad_dfs.append(table_i_df)
             logger.info('Concatinating tables...')
             self._ad_df = reduce(
-                lambda x, y: pd.merge(x, y, on=['Chr', 'Pos', 'Alt']),
+                lambda x, y: pd.merge(
+                    x, y, on=['Chr', 'Pos', 'Alt'], how=self.merge_method),
                 self.ad_dfs)
             self._ad_df.fillna(0, inplace=True)
+            self._ad_df = self._ad_df.astype('int')
         return self._ad_df
 
     @property
@@ -238,8 +241,7 @@ class snpTable:
                 self._alt_freq_df = self._alt_freq_df.reset_index()
                 self._alt_freq_df.loc[:, 'Chr'] = self._alt_freq_df.Chr.astype(
                     'str')
-                self._alt_freq_df.sort_values(
-                    ['Chr', 'Pos'], inplace=True)
+                self._alt_freq_df.sort_values(['Chr', 'Pos'], inplace=True)
                 if self.save_table:
                     self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
         return self._alt_freq_df
@@ -316,9 +318,11 @@ class snpTableMP(snpTable):
                 self.ad_dfs.append(table_i_df)
             logger.info('Concatinating tables...')
             self._ad_df = reduce(
-                lambda x, y: pd.merge(x, y, on=['Chr', 'Pos', 'Alt']),
+                lambda x, y: pd.merge(
+                    x, y, on=['Chr', 'Pos', 'Alt'], how=self.merge_method),
                 self.ad_dfs)
             self._ad_df.fillna(0, inplace=True)
+            self._ad_df = self._ad_df.astype('int')
         return self._ad_df
 
     @property
@@ -384,6 +388,9 @@ class snpAnnTable(snpTable):
                                                             left_index=True,
                                                             right_index=True)
                 self._alt_freq_df = self._alt_freq_df.reset_index()
+                self._alt_freq_df.loc[:, 'Chr'] = self._alt_freq_df.Chr.astype(
+                    'str')
+                self._alt_freq_df.sort_values(['Chr', 'Pos'], inplace=True)
                 if self.save_table:
                     self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
         return self._alt_freq_df
@@ -434,6 +441,9 @@ class snpAnnTableByChr(snpTableMP):
                                                             left_index=True,
                                                             right_index=True)
                 self._alt_freq_df = self._alt_freq_df.reset_index()
+                self._alt_freq_df.loc[:, 'Chr'] = self._alt_freq_df.Chr.astype(
+                    'str')
+                self._alt_freq_df.sort_values(['Chr', 'Pos'], inplace=True)
                 if self.save_table:
                     self._alt_freq_df.to_csv(self.alt_freq_file, index=False)
         return self._alt_freq_df
