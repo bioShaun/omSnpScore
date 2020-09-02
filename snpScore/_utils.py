@@ -613,7 +613,7 @@ def snp_density_stats(window_bed: PurePath, snp_density_bed: Path,
     if not density_stats_file.is_file():
         window_bed = BedTool(str(window_bed))
         snp_bed = BedTool(str(snp_density_bed))
-        cov_res = window_bed.coverage(snp_bed, counts=True)
+        cov_res = window_bed.coverage(snp_bed, counts=True, sorted=True)
         cov_str = StringIO(str(cov_res))
         cov_df = pd.read_csv(cov_str,
                              sep='\t',
