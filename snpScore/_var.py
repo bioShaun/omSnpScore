@@ -26,6 +26,13 @@ class SnpRep(IntEnum):
     unkown = 2
 
 
+class VarScoreParams(IntEnum):
+    snp_number_step = 5
+    snp_number_window = 20
+    min_depth = 5
+    qtlseqr_min_depth = 5
+
+
 script_dir = Path(__file__).parent
 SNP_SCORE_PLOT = script_dir / 'plot/snpScorePlot.R'
 QTLSEQR_PLOT = script_dir / 'plot/run_qtlseqr.R'

@@ -1,7 +1,8 @@
 import re
-import asyncio
+import json
 import shutil
 import jinja2
+import asyncio
 import numpy as np
 import pandas as pd
 from io import StringIO
@@ -11,8 +12,9 @@ from typing import List
 from pathlib import Path, PurePath
 from functools import reduce
 from pybedtools import BedTool
+from datetime import datetime
 from ._var import GROUPS, REF_FREQ, ALT_FREQ, OFFSET
-from ._var import SnpGroup, SnpRep, SnpGroupFreq
+from ._var import SnpGroup, SnpRep, SnpGroupFreq, VarScoreParams
 from ._var import SNP_SCORE_PLOT
 
 getcontext().prec = 3
@@ -559,6 +561,50 @@ def circos_cfg(circos_prefix, circos_path: Path = None) -> Path:
     with open(cfgFile, 'w') as file_inf:
         file_inf.write(cfgObj)
     return circos_path / circos_file
+
+
+def add_default_params(param_obj: dict) -> dict:
+    for name, member in VarScoreParams.__members__.items():
+        if not param_obj[name]:
+            param_obj[name] = member.value
+    return param_obj
+
+
+def is_same_param(param_obj: dict, param_json: Path) -> bool:
+    with open(param_json) as json_inf:
+        old_param = json.load(json_inf)
+        return param_obj == old_param
+
+
+def is_new_cmd(param_obj: dict, cmd_history_dir: Path) -> bool:
+    cmd_history_dir.mkdir(parents=True, exist_ok=True)
+    old_params = cmd_history_dir.glob('*.json')
+    for file_i in old_params:
+        if is_same_param(param_obj, file_i):
+            return False
+    return True
+
+
+def now_str() -> str:
+    return datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+
+
+def save_params(param_obj: dict, cmd_history_dir: Path) -> None:
+    new_param_file = cmd_history_dir / f'{now_str()}.params.json'
+    with open(str(new_param_file), 'w') as json_inf:
+        json.dump(param_obj, json_inf)
+
+
+def params_cfg(cfg_file: Path, cfg_value: dict, cmd_history_dir: Path) -> None:
+    save_params(cfg_value, cmd_history_dir)
+    cfg_value['report_time'] = now_str()
+    cfg_dir = PurePath(__file__).parent / 'config'
+    jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(
+        searchpath=f'{cfg_dir}'))
+    cfg_temp = jinja_env.get_template('params.cfg')
+    cfg_obj = cfg_temp.render(cfg_value)
+    with open(str(cfg_file), 'a') as file_inf:
+        file_inf.write(cfg_obj)
 
 
 def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):

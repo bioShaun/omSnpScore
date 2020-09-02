@@ -22,6 +22,9 @@ from ._utils import circos_plot
 from ._utils import split_qtlseqr_results
 from ._utils import snp_density_stats
 from ._utils import cp_files
+from ._utils import add_default_params
+from ._utils import params_cfg
+from ._utils import is_new_cmd
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE
 from ._var import CHR_WINDOW
