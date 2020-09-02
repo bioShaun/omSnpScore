@@ -171,7 +171,6 @@ class snpTable:
                     x, y, on=['Chr', 'Pos', 'Alt'], how=self.merge_method),
                 self.ad_dfs)
             self._ad_df.fillna(0, inplace=True)
-            self._ad_df = self._ad_df.astype('int')
         return self._ad_df
 
     @property
