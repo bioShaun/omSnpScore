@@ -50,3 +50,54 @@ VCF_SAMPLE_INDEX = 9
 GROUPS = tuple([grp_i.value for grp_i in SnpGroup.__members__.values()])
 MUT_NAME = SnpGroup.mut.value
 WILD_NAME = SnpGroup.wild.value
+
+# OUTPUT TABLE
+
+COLUMN_NAME_MAP = {
+    'Chr': 'CHROM',
+    'Chrom': 'CHROM',
+    'Pos': 'POS',
+    'Alt': 'ALT',
+    'snp_score': 'varBScore',
+    'mutant.FREQ': 'mutant.AF',
+    'wild.FREQ': 'wild.AF',
+    'LOW.FREQ': 'wild.AF',
+    'DP.LOW': 'wild.DP',
+    'SNPindex.LOW': 'wild.SNPindex',
+    'HIGH.FREQ': 'mutant.AF',
+    'DP.HIGH': 'mutant.DP',
+    'SNPindex.HIGH': 'mutant.SNPindex',
+    'REF_FRQ': 'REF_FRQ(AFD)',
+    'euc': 'ED'
+}
+
+## snp density
+SNP_DENSITY_OUT_COL = [
+    'CHROM', 'POS', 'ALT', 'wild.AF', 'mutant.AF', 'REF_FRQ(AFD)', 'wild.DP',
+    'mutant.DP'
+]
+
+# varscore
+VAR_SCORE_OUT_COL = [
+    'CHROM', 'Start', 'End', 'varBScore', 'wild.AF', 'mutant.AF',
+    'REF_FRQ(AFD)', 'wild.DP', 'mutant.DP', 'POS', 'REF', 'ALT', 'Feature',
+    'Gene', 'Transcript'
+]
+
+## qtlseqr
+SCIENTIFIC_NUMBER_COLS = [
+    'pvalue', 'negLog10Pval', 'qvalue', 'ED', 'fitted', 'unfitted',
+    'dis2edcutoff'
+]
+
+QTLSEQR_BASIC_COLS = [
+    'CHROM', 'POS', 'ALT', 'wild.AF', 'mutant.AF', 'REF_FRQ(AFD)', 'wild.DP',
+    'mutant.DP'
+]
+
+ED_SPECIFIC_COLS = ['ED', 'fitted', 'unfitted', 'dis2edcutoff']
+
+QTLSEQR_SPECIFIC_COLS = [
+    'deltaSNP', 'nSNPs', 'tricubeDeltaSNP', 'Gprime', 'negLog10Pval', 'qvalue',
+    'minDP', 'CI_95', 'CI_99'
+]

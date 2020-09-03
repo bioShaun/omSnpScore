@@ -13,9 +13,11 @@ from pathlib import Path, PurePath
 from functools import reduce
 from pybedtools import BedTool
 from datetime import datetime
-from ._var import GROUPS, REF_FREQ, ALT_FREQ, OFFSET
+from ._var import GROUPS, OFFSET
 from ._var import SnpGroup, SnpRep, SnpGroupFreq, VarScoreParams
-from ._var import SNP_SCORE_PLOT
+from ._var import SNP_SCORE_PLOT, SNP_DENSITY_OUT_COL, COLUMN_NAME_MAP
+from ._var import VAR_SCORE_OUT_COL
+from ._var import SCIENTIFIC_NUMBER_COLS, ED_SPECIFIC_COLS, QTLSEQR_BASIC_COLS, QTLSEQR_SPECIFIC_COLS
 
 getcontext().prec = 3
 
@@ -445,13 +447,16 @@ def wrap_param_arg(args):
         yield arg_i
 
 
-def merge_snp_density_allele(df: pd.DataFrame) -> pd.DataFrame:
-    for allele in ['mutant', 'wild']:
-        df.loc[:,
-               f'{allele}.AD'] = df[f'{allele}.REF.AD'].astype('str').str.cat(
-                   df[f'{allele}.ALT.AD'].astype('str'), sep='|')
-        df.drop([f'{allele}.REF.AD', f'{allele}.ALT.AD'], axis=1, inplace=True)
-    return df
+def add_qtlserq_like_cols(df: pd.DataFrame,
+                          out_column: List[str]) -> pd.DataFrame:
+    df.loc[:, 'REF_FRQ(AFD)'] = (df['mutant.REF.AD'] + df['wild.REF.AD']) / (
+        df['mutant.REF.AD'] + df['wild.REF.AD'] + df['mutant.ALT.AD'] +
+        df['wild.ALT.AD'])
+    df.loc[:, 'wild.DP'] = df['wild.REF.AD'] + df['wild.ALT.AD']
+    df.loc[:, 'mutant.DP'] = df['mutant.REF.AD'] + df['mutant.ALT.AD']
+
+    df.rename(columns=COLUMN_NAME_MAP, inplace=True)
+    return df[out_column]
 
 
 def merge_split_file(file_dir,
@@ -475,7 +480,11 @@ def merge_split_file(file_dir,
     if sortby:
         df.sort_values(sortby, inplace=True)
     if '.snp.freq.csv' in file_pattern:
-        df = merge_snp_density_allele(df)
+        df = add_qtlserq_like_cols(df, SNP_DENSITY_OUT_COL)
+    if '.var.score.top' in file_pattern:
+        df = add_qtlserq_like_cols(df, VAR_SCORE_OUT_COL)
+    if '.var.score.csv' in file_pattern:
+        df.rename(columns=COLUMN_NAME_MAP, inplace=True)
     if not outfile.is_file():
         if 'qtlseqr' in file_pattern:
             df.to_csv(outfile, index=False)
@@ -616,42 +625,27 @@ def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
 def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
                           edFile: Path) -> None:
     df = pd.read_csv(qtlseqrFile)
-    col_map = {
-        'LOW.FREQ': 'wild.FREQ',
-        'DP.LOW': 'wild.DP',
-        'SNPindex.LOW': 'wild.SNPindex',
-        'HIGH.FREQ': 'mutant.FREQ',
-        'DP.HIGH': 'mutant.DP',
-        'SNPindex.HIGH': 'mutant.SNPindex',
-    }
+
     ad_cols = [each for each in df.columns if 'AD' in each]
-    redut_cols = ['wild.FREQ', 'mutant.FREQ']
-    df.rename(columns=col_map, inplace=True)
+    df.rename(columns=COLUMN_NAME_MAP, inplace=True)
     df.drop(ad_cols, axis=1, inplace=True)
-    df.drop(redut_cols, axis=1, inplace=True)
-    for col_i in [
-            'pvalue', 'negLog10Pval', 'qvalue', 'euc', 'fitted', 'unfitted',
-            'dis2edcutoff'
-    ]:
+    for col_i in SCIENTIFIC_NUMBER_COLS:
         if col_i in df.columns:
             df.loc[:, col_i] = df[col_i].astype('str')
 
-    if 'euc' in df.columns:
-        ed_extend_cols = ['euc', 'fitted', 'unfitted', 'dis2edcutoff']
-        basic_cols = [
-            'CHROM', 'POS', 'ALT', 'wild.DP', 'wild.SNPindex', 'mutant.DP',
-            'mutant.SNPindex', 'REF_FRQ'
-        ]
-        ed_cols = basic_cols + ed_extend_cols
+    if 'ED' in df.columns:
+        ed_cols = QTLSEQR_BASIC_COLS + ED_SPECIFIC_COLS
         ed_df = df.loc[:, ed_cols].copy()
         if not edFile.is_file():
             ed_df.to_csv(edFile, index=False, float_format='%.3f')
 
     if 'Gprime' in df.columns:
-        if 'euc' in df.columns:
-            df.drop(ed_extend_cols, axis=1, inplace=True)
+        qtlseqr_cols = QTLSEQR_BASIC_COLS + QTLSEQR_SPECIFIC_COLS
+        qtlseqr_df = df[qtlseqr_cols].copy()
         if not qtlseqrAloneFile.is_file():
-            df.to_csv(qtlseqrAloneFile, index=False, float_format='%.3f')
+            qtlseqr_df.to_csv(qtlseqrAloneFile,
+                              index=False,
+                              float_format='%.3f')
 
 
 def snp_density_stats(window_bed: PurePath, snp_density_bed: Path,
