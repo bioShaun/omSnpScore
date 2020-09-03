@@ -1,0 +1,12 @@
+1.CHROM : Chromosome
+2.POS : Position
+3.ALT : Alternative allele
+4.wild.AF : wild bulk allele frequency (the same as snp-index)
+5.mutant.AF : mutant bulk allele frequency (the same as snp-index)
+6.REF_FRQ(AFD) : total allele coverage of two bulk / total coverage (both refer and allele) of two bulk
+7.wild.DP : wild bulk read coverage depth
+8.mutant.DP : mutant bulk read coverage depth
+
+
+Figure plot Citation:
+Yin, L. et al. rMVP: A Memory-efficient, Visualization-enhanced, and Parallel-accelerated tool for Genome-Wide Association Study. bioRxiv, 2020.08.20.258491 (2020)

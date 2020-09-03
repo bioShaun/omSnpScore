@@ -25,6 +25,12 @@ from ._utils import cp_files
 from ._utils import add_default_params
 from ._utils import params_cfg
 from ._utils import is_new_cmd
+from ._utils import cp_if_not_exist
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE
 from ._var import CHR_WINDOW
+from ._var import SNP_DENSITY_README
+from ._var import VAR_SCORE_README
+from ._var import ED_README
+from ._var import QTLSEQR_README
+from ._var import CIRCOS_README

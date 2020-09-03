@@ -1,0 +1,28 @@
+xxxxx.var.score.csv   :  table for varBScore plot
+1.CHROM	: chrome name
+2.Start	: chrome name
+3.End	:	window end position
+4.varBScore	:  varBScore for each windows
+
+
+xxxxx.var.score.top100.ann.csv : top 100 windows of varBScore with gene information
+1.CHROM	: chrome name
+2.Start	: window start position
+3.End	:	window end position
+4.varBScore	:  varBScore for each windows
+5.wild.AF	: Alle frequency of wild bulk
+6.mutant.AF : Alle frequency of mutant bulk
+7.REF_FRQ(AFD) : total allele coverage of two bulk / total coverage (both refer and allele) of two bulk
+8.wild.DP : wild bulk read coverage depth
+9.mutant.DP : mutant bulk read coverage depth
+10.POS	: Positon
+11.REF : Reference genotype
+12.ALT : Alter genotype
+13.Feature ： Variant impact type
+14.Gene : Gene ID on this locus
+15.Transcript : Transcript ID on this locus
+
+
+varBScore method:
+Dong, C., Zhang, L., Chen, Z., Xia, C., & Gu, Y. (2020). Combining a New Exome Capture Panel With an Effective varBScore Algorithm Accelerates BSA-Based Gene Cloning in Wheat. 11(August), 1–12. https://doi.org/10.3389/fpls.2020.01249
+

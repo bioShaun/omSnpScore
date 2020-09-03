@@ -1,0 +1,27 @@
+From the inside track to outside track are:
+1) Fitted ED^4 value;  (Data from ed folder)
+2) G' value;  (Data from QTLseqr folder)
+3) ΔSNP-index;  (Data from QTLseqr folder)
+4) varBScore;  (Data from varBScore folder)
+5) SNP density; (Data from snpDensity folder)
+6) Gene density; (Gene number / 1M bp)
+7) Chrom scaleplate;
+
+Citation:
+
+ED method:
+Gorsi, B., Yost, H. J., Demarest, B. L., Bisgrove, B. W., Hill, J. T., & Su, Y.-C. (2013). MMAPPR: Mutation Mapping Analysis Pipeline for Pooled RNA-seq. Genome Research, 23(4), 687–697. https://doi.org/10.1101/gr.146936.112
+
+QTLseqr:
+Mansfeld B.N. and Grumet R, QTLseqr: An R package for bulk segregant analysis with next-generation sequencing The Plant Genome doi:10.3835/plantgenome2018.01.0006
+
+SNP-index and deltaSNP method:
+
+Takagi, H., Abe, A., Yoshida, K., Kosugi, S., Natsume, S., Mitsuoka, C., Uemura, A., Utsushi, H., Tamiru, M., Takuno, S., Innan, H., Cano, L. M., Kamoun, S. and Terauchi, R. (2013), QTL-seq: rapid mapping of quantitative trait loci in rice by whole genome resequencing of DNA from two bulked populations. Plant J, 74: 174–183. doi:10.1111/tpj.12105
+
+G prime method:
+
+Magwene PM, Willis JH, Kelly JK (2011) The Statistics of Bulk Segregant Analysis Using Next Generation Sequencing. PLOS Computational Biology 7(11): e1002255. doi.org/10.1371/journal.pcbi.1002255
+
+varBScore method:
+Dong, C., Zhang, L., Chen, Z., Xia, C., & Gu, Y. (2020). Combining a New Exome Capture Panel With an Effective varBScore Algorithm Accelerates BSA-Based Gene Cloning in Wheat. 11(August), 1–12. https://doi.org/10.3389/fpls.2020.01249

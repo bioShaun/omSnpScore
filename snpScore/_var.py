@@ -34,6 +34,7 @@ class VarScoreParams(IntEnum):
 
 
 script_dir = Path(__file__).parent
+
 SNP_SCORE_PLOT = script_dir / 'plot/snpScorePlot.R'
 QTLSEQR_PLOT = script_dir / 'plot/run_qtlseqr.R'
 QTLSEQR_PLOT_WEB = script_dir / 'plot/run_qtlseqr_web.R'
@@ -101,3 +102,12 @@ QTLSEQR_SPECIFIC_COLS = [
     'deltaSNP', 'nSNPs', 'tricubeDeltaSNP', 'Gprime', 'negLog10Pval', 'qvalue',
     'minDP', 'CI_95', 'CI_99'
 ]
+
+# result readme
+DOC_DIR = script_dir / 'doc'
+
+SNP_DENSITY_README = DOC_DIR / 'SNP_Density.readme.txt'
+VAR_SCORE_README = DOC_DIR / 'varBScore.readme.txt'
+ED_README = DOC_DIR / 'ed.readme.txt'
+QTLSEQR_README = DOC_DIR / 'qtlseqr.readme.txt'
+CIRCOS_README = DOC_DIR / 'circos.readme.txt'

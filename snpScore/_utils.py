@@ -665,3 +665,9 @@ def snp_density_stats(window_bed: PurePath, snp_density_bed: Path,
 def cp_files(fileList: List[Path], outPath: Path) -> None:
     for file_i in fileList:
         shutil.copy(file_i, outPath)
+
+
+def cp_if_not_exist(fileItem: Path, outPath: Path) -> None:
+    outFile = outPath / fileItem.name
+    if not outFile.exists():
+        shutil.copy(fileItem, outPath)

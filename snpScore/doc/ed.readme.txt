@@ -1,0 +1,16 @@
+1.CHROM : Chromosome
+2.POS : Position
+3.ALT : Alternative allele
+4.wild.AF : wild bulk allele frequency (the same as snp-index)
+5.mutant.AF : mutant bulk allele frequency (the same as snp-index)
+6.REF_FRQ(AFD) : total allele coverage of two bulk / total coverage (both refer and allele) of two bulk
+7.wild.DP : wild bulk read coverage depth
+8.mutant.DP : mutant bulk read coverage depth
+9.ED : Euclidean distance at each SNP
+10.fitted : ED^4 fit using a Loess curve
+11.unfitted : ED^4
+12.dis2edcutoff : cutoffs conservatively with a minimum distance of 0.5 and a minimum mutant pool allele frequency of 0.75.
+
+
+Citation:
+Gorsi, B., Yost, H. J., Demarest, B. L., Bisgrove, B. W., Hill, J. T., & Su, Y.-C. (2013). MMAPPR: Mutation Mapping Analysis Pipeline for Pooled RNA-seq. Genome Research, 23(4), 687–697. https://doi.org/10.1101/gr.146936.112
