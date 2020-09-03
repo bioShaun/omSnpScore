@@ -213,16 +213,16 @@ qtlseqr_snp_index_plot <- function() {
 
 var_table_df <- fread(var_table)
 if (!(is.na(chr.size))) {
-    chr.size.df <- read.delim(chr.size, header=F, col.names=c('Chrom', 'Start'))
-    var_table_df$CHROM <- factor(var_table_df$CHROM, levels = chr.size.df$Chrom)
+    chr.size.df <- read.delim(chr.size, header=F, col.names=c('CHROM', 'Start'))
+    var_table_df$CHROM <- factor(var_table_df$CHROM, levels = chr.size.df$CHROM)
 }
 
 if (plot_type == 'density') {
-  var_table_df$SNP <- paste(var_table_df$Chr, var_table_df$Pos, sep = ':')
-  plot_data <- var_table_df[, c('SNP', 'Chr', 'Pos')]
-  plot_data <- arrange(plot_data, Chr, Pos)
-  plot_data$Chr <- str_remove(plot_data$Chr, fixed('chr', ignore_case = T))
-  plot_data <- filter(plot_data, Chr != "Un")
+  var_table_df$SNP <- paste(var_table_df$CHROM, var_table_df$POS, sep = ':')
+  plot_data <- var_table_df[, c('SNP', 'CHROM', 'POS')]
+  plot_data <- arrange(plot_data, CHROM, POS)
+  plot_data$CHROM <- str_remove(plot_data$CHROM, fixed('chr', ignore_case = T))
+  plot_data <- filter(plot_data, CHROM != "Un")
   omsCMplot(plot_data,plot.type="d",bin.size=1e6,
          col=c("darkgreen", "yellow", "red"),
          file="jpg", dpi=300, out.name = output_prefix,
@@ -293,18 +293,18 @@ if (plot_type == 'density') {
                 amplify=F, signal.col=NULL,cex=0.6)    
 } else if (plot_type == 'var'){
   var_table_df$Start <- var_table_df$Start + 1
-  var_table_df$SNP <- paste(var_table_df$Chrom, var_table_df$Start, sep = ':')
-  plot_data <- var_table_df[, c('SNP', 'Chrom', 'Start', 'snp_score')]
+  var_table_df$SNP <- paste(var_table_df$CHROM, var_table_df$Start, sep = ':')
+  plot_data <- var_table_df[, c('SNP', 'CHROM', 'Start', 'varBScore')]
   if (!(is.na(chr.size))) {
-    chr.size.df <- read.delim(chr.size, header=F, col.names=c('Chrom', 'Start'))
-    chr.size.df$SNP <- paste(chr.size.df$Chrom, chr.size.df$Start, sep = ':')
-    chr.size.df$snp_score <- 1
-    chr.size.df <- chr.size.df[, c('SNP', 'Chrom', 'Start', 'snp_score')]
+    chr.size.df <- read.delim(chr.size, header=F, col.names=c('CHROM', 'Start'))
+    chr.size.df$SNP <- paste(chr.size.df$CHROM, chr.size.df$Start, sep = ':')
+    chr.size.df$varBScore <- 1
+    chr.size.df <- chr.size.df[, c('SNP', 'CHROM', 'Start', 'varBScore')]
     plot_data <- rbind(plot_data, chr.size.df)
-    plot_data <- arrange(plot_data, Chrom, Start)
+    plot_data <- arrange(plot_data, CHROM, Start)
   }
-  plot_data$Chrom <- str_remove(plot_data$Chrom, fixed('chr', ignore_case = T))
-  plot_data <- filter(plot_data, Chrom != "Un")
+  plot_data$CHROM <- str_remove(plot_data$CHROM, fixed('chr', ignore_case = T))
+  plot_data <- filter(plot_data, CHROM != "Un")
   omsCMplot(plot_data,plot.type="m",LOG10=F,threshold=NULL, col = wheat_cols,
              chr.den.col=NULL,file="jpg",memo="test",dpi=300,ylab = "Score",
              out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title, )
