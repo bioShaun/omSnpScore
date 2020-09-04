@@ -26,6 +26,7 @@ from ._utils import add_default_params
 from ._utils import params_cfg
 from ._utils import is_new_cmd
 from ._utils import cp_if_not_exist
+from ._utils import format_outfile
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE
 from ._var import CHR_WINDOW

@@ -8,7 +8,7 @@ import pandas as pd
 from io import StringIO
 from loguru import logger
 from decimal import Decimal, getcontext
-from typing import List
+from typing import List, Optional
 from pathlib import Path, PurePath
 from functools import reduce
 from pybedtools import BedTool
@@ -459,6 +459,22 @@ def add_qtlserq_like_cols(df: pd.DataFrame,
     return df[out_column]
 
 
+def reformat_df(df: pd.DataFrame,
+                file_name: str,
+                sortby: Optional[List[str]] = None) -> pd.DataFrame:
+    if sortby:
+        df.sort_values(sortby, inplace=True)
+    if '.snp.freq.csv' in file_name:
+        df = add_qtlserq_like_cols(df, SNP_DENSITY_OUT_COL)
+    elif '.var.score.top' in file_name:
+        df = add_qtlserq_like_cols(df, VAR_SCORE_OUT_COL)
+    elif '.var.score.csv' in file_name:
+        df.rename(columns=COLUMN_NAME_MAP, inplace=True)
+    else:
+        pass
+    return df
+
+
 def merge_split_file(file_dir,
                      file_pattern,
                      sortby=None,
@@ -470,21 +486,13 @@ def merge_split_file(file_dir,
     pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
     df_list = []
     for file_i in pattern_file:
-        # if file_i.name not in exist_file_name:
         df_list.append(pd.read_csv(file_i, header=input_header, sep=input_sep))
     if out_dir is None:
         out_dir = Path(file_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     outfile = Path(out_dir) / file_pattern
     df = pd.concat(df_list)
-    if sortby:
-        df.sort_values(sortby, inplace=True)
-    if '.snp.freq.csv' in file_pattern:
-        df = add_qtlserq_like_cols(df, SNP_DENSITY_OUT_COL)
-    if '.var.score.top' in file_pattern:
-        df = add_qtlserq_like_cols(df, VAR_SCORE_OUT_COL)
-    if '.var.score.csv' in file_pattern:
-        df.rename(columns=COLUMN_NAME_MAP, inplace=True)
+    df = reformat_df(df, file_pattern, sortby=sortby)
     if not outfile.is_file():
         if 'qtlseqr' in file_pattern:
             df.to_csv(outfile, index=False)
@@ -495,6 +503,17 @@ def merge_split_file(file_dir,
                       header=out_header,
                       sep=out_sep)
     return outfile
+
+
+def format_outfile(filePath: Path,
+                   outDir: Path,
+                   sortby: Optional[List[str]] = None) -> Path:
+    df = pd.read_csv(filePath)
+    outFilePath = outDir / filePath.name
+    if not outFilePath.is_file():
+        df = reformat_df(df, filePath.name, sortby=sortby)
+        df.to_csv(outFilePath, index=False, float_format='%.3f')
+    return outFilePath
 
 
 def gene2pos(gene_bed, genes):
@@ -622,6 +641,14 @@ def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
     return cmd
 
 
+def extract_qtlseqr_result(df: pd.DataFrame, selected_cols: List[str],
+                           outFile: Path) -> None:
+    if not outFile.is_file():
+        out_cols = QTLSEQR_BASIC_COLS + selected_cols
+        df = df[out_cols].copy()
+        df.to_csv(outFile, index=False, float_format='%.3f')
+
+
 def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
                           edFile: Path) -> None:
     df = pd.read_csv(qtlseqrFile)
@@ -634,18 +661,10 @@ def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
             df.loc[:, col_i] = df[col_i].astype('str')
 
     if 'ED' in df.columns:
-        ed_cols = QTLSEQR_BASIC_COLS + ED_SPECIFIC_COLS
-        ed_df = df.loc[:, ed_cols].copy()
-        if not edFile.is_file():
-            ed_df.to_csv(edFile, index=False, float_format='%.3f')
+        extract_qtlseqr_result(df, ED_SPECIFIC_COLS, edFile)
 
     if 'Gprime' in df.columns:
-        qtlseqr_cols = QTLSEQR_BASIC_COLS + QTLSEQR_SPECIFIC_COLS
-        qtlseqr_df = df[qtlseqr_cols].copy()
-        if not qtlseqrAloneFile.is_file():
-            qtlseqr_df.to_csv(qtlseqrAloneFile,
-                              index=False,
-                              float_format='%.3f')
+        extract_qtlseqr_result(df, QTLSEQR_SPECIFIC_COLS, qtlseqrAloneFile)
 
 
 def snp_density_stats(window_bed: PurePath, snp_density_bed: Path,
