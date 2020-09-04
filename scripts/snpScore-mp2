@@ -3,7 +3,6 @@
 import sys
 import json
 import click
-import shutil
 import pandas as pd
 from loguru import logger
 from pathlib import Path
@@ -15,8 +14,8 @@ from snpScore import merge_split_file, score_plot, wrap_param_arg
 from snpScore import circos_suffix, circos_cfg, circos_plot
 from snpScore import split_qtlseqr_results, snp_density_stats
 from snpScore import add_default_params, params_cfg, is_new_cmd, cp_if_not_exist
-from snpScore import SNP_DENSITY_README, VAR_SCORE_README
-from snpScore import ED_README, QTLSEQR_README, CIRCOS_README
+from snpScore import VarScoreOutDirName
+from snpScore import VarScoreDocName
 
 BY_CHR_BIN = "snpScore-bychr"
 
@@ -103,8 +102,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     plot_cmd = []
 
     # varBScore
-    varBScore_dir = results_dir / '2.varBScore'
-    cp_if_not_exist(VAR_SCORE_README, varBScore_dir)
+    varBScore_dir = results_dir / VarScoreOutDirName.var_score.value
     snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
     snp_score_file = merge_split_file(results_dir,
                                       snp_score_file_pattern,
@@ -120,8 +118,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                                           out_dir=varBScore_dir)
 
     # SNP DENSITY
-    snp_freq_dir = results_dir / '1.SNP_Density'
-    cp_if_not_exist(SNP_DENSITY_README, snp_freq_dir)
+    snp_freq_dir = results_dir / VarScoreOutDirName.snp_density.value
     snp_freq_file = merge_split_file(
         results_dir,
         f"{snpscore_obj.group_label}.snp.freq.csv",
@@ -156,12 +153,10 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     qtlseqr_file = merge_split_file(results_dir,
                                     qtlseqr_obj.filePath.name,
                                     sortby=["CHROM", "POS"])
-    qtlSeqrDir = results_dir / '4.QTLseqr'
+    qtlSeqrDir = results_dir / VarScoreOutDirName.qtlseqr.value
     qtlSeqrDir.mkdir(parents=True, exist_ok=True)
-    cp_if_not_exist(QTLSEQR_README, qtlSeqrDir)
-    edDir = results_dir / '3.ed'
+    edDir = results_dir / VarScoreOutDirName.ed.value
     edDir.mkdir(parents=True, exist_ok=True)
-    cp_if_not_exist(ED_README, edDir)
 
     qtlSeqrDirFile = qtlSeqrDir / qtlseqr_obj.qtlseqrFileName
     edFile = edDir / qtlseqr_obj.edFileName
@@ -178,9 +173,9 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
         circos_name = circos_suffix(snpscore_obj.score_prefix,
                                     qtlseqr_obj.filePath.stem)
         circos_dir = results_dir / 'circos_data' / circos_name
-        circos_outdir = results_dir / '5.circosPlot'
+        circos_outdir = results_dir / VarScoreOutDirName.circos.value
         circos_outdir.mkdir(parents=True, exist_ok=True)
-        cp_if_not_exist(CIRCOS_README, circos_outdir)
+        cp_if_not_exist(VarScoreDocName.circos.value, circos_outdir)
         circos_plot_path = circos_cfg(circos_dir, circos_path=circos_outdir)
         if not circos_plot_path.is_file():
             plot_cmd.append(
@@ -188,6 +183,12 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                             circos_dir))
     plot_cmd = list(filter(None, plot_cmd))
     async_batch_sh_jobs(plot_cmd, thread=thread)
+
+    # cp readme
+    cp_if_not_exist(VarScoreDocName.var_score.value, varBScore_dir)
+    cp_if_not_exist(VarScoreDocName.snp_density.value, snp_freq_dir)
+    cp_if_not_exist(VarScoreDocName.qtlseqr.value, qtlSeqrDir)
+    cp_if_not_exist(VarScoreDocName.ed.value, edDir)
 
     # write params config
     params_cfg_file = results_dir / 'parameters.txt'

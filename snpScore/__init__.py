@@ -29,8 +29,5 @@ from ._utils import cp_if_not_exist
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE
 from ._var import CHR_WINDOW
-from ._var import SNP_DENSITY_README
-from ._var import VAR_SCORE_README
-from ._var import ED_README
-from ._var import QTLSEQR_README
-from ._var import CIRCOS_README
+from ._var import VarScoreOutDirName
+from ._var import VarScoreDocName

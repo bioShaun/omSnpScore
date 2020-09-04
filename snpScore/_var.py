@@ -103,11 +103,23 @@ QTLSEQR_SPECIFIC_COLS = [
     'minDP', 'CI_95', 'CI_99'
 ]
 
+
+# OUTPUT DIR
+class VarScoreOutDirName(Enum):
+    snp_density = '1.SNP_Density'
+    var_score = '2.varBScore'
+    ed = '3.ed'
+    qtlseqr = '4.QTLseqr'
+    circos = '5.circosPlot'
+
+
 # result readme
 DOC_DIR = script_dir / 'doc'
 
-SNP_DENSITY_README = DOC_DIR / 'SNP_Density.readme.txt'
-VAR_SCORE_README = DOC_DIR / 'varBScore.readme.txt'
-ED_README = DOC_DIR / 'ed.readme.txt'
-QTLSEQR_README = DOC_DIR / 'qtlseqr.readme.txt'
-CIRCOS_README = DOC_DIR / 'circos.readme.txt'
+
+class VarScoreDocName(Enum):
+    snp_density = DOC_DIR / 'SNP_Density.readme.txt'
+    var_score = DOC_DIR / 'varBScore.readme.txt'
+    ed = DOC_DIR / 'ed.readme.txt'
+    qtlseqr = DOC_DIR / 'qtlseqr.readme.txt'
+    circos = DOC_DIR / 'circos.readme.txt'
