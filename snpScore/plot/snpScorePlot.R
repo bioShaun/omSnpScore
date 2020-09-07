@@ -210,11 +210,20 @@ qtlseqr_snp_index_plot <- function() {
 
 }
 
+replace_zero <- function(num_count) {
+  if (num_count == 0) {
+    return(-Inf)
+  } else {
+    return(num_count)
+  }
+}
 
 var_table_df <- fread(var_table)
 if (!(is.na(chr.size))) {
     chr.size.df <- read.delim(chr.size, header=F, col.names=c('CHROM', 'Start'))
-    var_table_df$CHROM <- factor(var_table_df$CHROM, levels = chr.size.df$CHROM)
+    if ('CHROM' %in% colnames(var_table_df)) {
+        var_table_df$CHROM <- factor(var_table_df$CHROM, levels = chr.size.df$CHROM)
+    }
 }
 
 if (plot_type == 'density') {
@@ -313,6 +322,53 @@ if (plot_type == 'density') {
                 chr.den.col=NULL,file="pdf",memo="test",dpi=300,ylab = "Score",
                 out.name = output_prefix, cex.axis = 0.8, plot.title=plot_title)
   }
+
+}  else if (plot_type == 'density-new') {
+    var_table_df$chrom <- str_remove(var_table_df$chrom, fixed('chr', ignore_case = T))
+    chr.size.df$CHROM <- str_remove(chr.size.df$CHROM, fixed('chr', ignore_case = T))
+    var_table_df$chrom <- factor(var_table_df$chrom, levels = chr.size.df$CHROM)
+    plot_data <- filter(var_table_df, chrom != "Un")
+
+    chrom_list <- as.character(unique(plot_data$chrom))
+    chrom_pos <- 2 *seq(length(chrom_list))
+    plot_data$chrom_pos <- chrom_pos[plot_data$chrom]
+    plot_data$variantCount2 <- sapply(plot_data$variantCount, replace_zero)
+
+    mega_base = floor(log10(max(chr.size.df$Start)))
+    mega_unit = str_pad('M', mega_base - 6 + 1,  pad = "0")
+    max_chr_len = ceiling(max(chr.size.df$Start)/(10^mega_base))
+
+    cor_plot_col <- colorRampPalette(brewer.pal(11, 'RdYlGn'))(100)
+
+    p <- ggplot(plot_data) + 
+        geom_rect(aes(xmin=start, xmax=end, ymin=0, 
+                        ymax=1, fill = variantCount2)) +
+        facet_grid(chrom~.) +
+        theme(strip.text.y = element_text(size=rel(.8), 
+                                            face="bold",
+                                            angle = 0),
+                axis.text.y = element_blank(),
+                axis.ticks = element_blank(),
+                panel.background = element_rect(fill = "white"),
+                plot.title = element_text(hjust = 0.5)
+                ) +
+        scale_x_continuous(limits = c(0, max_chr_len * 10^mega_base), 
+                            breaks = seq(0, max_chr_len * 10^mega_base, 10^mega_base),
+                            labels = c(0, paste0(seq(1, max_chr_len), mega_unit, sep = ""))) +
+        scale_fill_gradientn(colours = rev(cor_plot_col), na.value = "grey80") +
+        guides(fill=guide_colourbar(title='Number of SNP')) +
+        xlab('Chromosome Length') + ylab('') +
+        ggtitle(plot_title)
+
+    chrom_num <- length(chrom_list)
+    p_height = 2 * chrom_num / 7
+    ggsave(paste(output_prefix, 'png', sep='.'), 
+    plot = p, width = 10, height = p_height,
+    dpi = 300, type = "cairo")
+    if ( ! is_web ) {
+        ggsave(paste(output_prefix, 'pdf', sep='.'), 
+        plot = p, width = 10, height = p_height)    
+    }
 
 } else {
     print('unsuported plot type.')

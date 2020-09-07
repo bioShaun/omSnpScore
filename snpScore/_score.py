@@ -168,7 +168,9 @@ class snpScoreBox:
         if self._snp_ann_df is None:
             logger.info('Loading snp annotation...')
             self._snp_ann_df = pd.read_pickle(self.vcf_ann_file)
-            self._snp_ann_df.loc[:, '#CHROM'] = self._snp_ann_df['#CHROM'].astype('str')
+            self._snp_ann_df.loc[:,
+                                 '#CHROM'] = self._snp_ann_df['#CHROM'].astype(
+                                     'str')
         return self._snp_ann_df
 
     @property
@@ -187,7 +189,6 @@ class snpScoreBox:
                 self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
                                              inplace=True,
                                              axis=1)
-                self._snp_window_ann_df.to_csv('test.ann.txt', sep='\t', index=False, na_rep='NA')
                 if not self._snp_window_ann_df.empty:
                     snpeff_anno = list(
                         self._snp_window_ann_df.INFO.map(extract_snpeff_anno))

@@ -4,6 +4,7 @@ import json
 import shutil
 import jinja2
 import asyncio
+import delegator
 import numpy as np
 import pandas as pd
 from io import StringIO
@@ -44,6 +45,10 @@ class UnsupportedPlot(Exception):
 
 
 class DuplicatedRecord(Exception):
+    pass
+
+
+class SnpDensityWindowFailed(Exception):
     pass
 
 
@@ -321,7 +326,9 @@ def score_plot(score_file,
                chr_size="",
                platform="local"):
     out_prefix = score_file.with_suffix('.plot')
-    if method in ['var', 'est_mut_alt', 'est_mut_ref', 'density', 'ED']:
+    if method in [
+            'var', 'est_mut_alt', 'est_mut_ref', 'density', 'ED', 'density-new'
+    ]:
         out_plot = score_file.with_suffix('.plot.jpg')
     elif method == 'snp_index':
         out_plot = score_file.with_suffix('')
@@ -356,7 +363,7 @@ def extract_snpeff_anno(anno_line):
         anno_line_stats = gene_anno.split(",")
     except Exception:
         print(anno_line)
-        sys.exit(1)
+        sys.exit('snp annotation error!')
     for annStr in anno_line_stats:
         annDetailArray = annStr.split("|")
         filed_stats = []
@@ -695,3 +702,30 @@ def cp_if_not_exist(fileItem: Path, outPath: Path) -> None:
 def cp_files(fileList: List[Path], outPath: Path) -> None:
     for file_i in fileList:
         cp_if_not_exist(file_i, outPath)
+
+
+def window_number_format(number):
+    megabase = 1000 * 1000
+    kilobase = 1000
+    if number >= megabase:
+        return f'{number / megabase}M'
+    elif number >= kilobase:
+        return f'{int(number / kilobase)}K'
+    else:
+        return str(number)
+
+
+def make_chr_window(chr_size: Path, window: int, step: int,
+                    outPath: Path) -> Path:
+    if step:
+        fileName = f'w{window_number_format(window)}.s{window_number_format(step)}.bed'
+    else:
+        fileName = f'w{window_number_format(window)}.bed'
+    window_file = outPath / fileName
+    if not window_file.is_file():
+        step_param = f'-s {step}' if step else ''
+        cmd = f'bedtools makewindows -g {chr_size} -w {window} {step_param} | bedtools sort -i - > {window_file}'
+        delegator.run(cmd)
+        if not window_file.is_file():
+            raise SnpDensityWindowFailed
+    return window_file

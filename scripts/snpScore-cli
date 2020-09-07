@@ -9,10 +9,10 @@ from snpScore import snpTable, async_batch_sh_jobs
 from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 from snpScore import freq2qtlseqr
 from snpScore import score_plot
-from snpScore import cp_files, CHR_WINDOW
+from snpScore import cp_files
 from snpScore import split_qtlseqr_results, snp_density_stats
 from snpScore import VarScoreDocName, VarScoreOutDirName
-from snpScore import format_outfile
+from snpScore import format_outfile, make_chr_window, window_number_format
 
 
 @click.command()
@@ -73,10 +73,14 @@ from snpScore import format_outfile
               help='chr size file, default is chr size of bread wheat.',
               type=click.Path(exists=True, dir_okay=False),
               default=CHR_SIZE)
-@click.option('--chr_window',
-              help='chr 1m window file, to generate snpDensity stats.',
-              type=click.Path(exists=True, dir_okay=False),
-              default=CHR_WINDOW)
+@click.option('--snp_density_window',
+              help='window size to calculate snp density.',
+              type=click.INT,
+              default=1000_000)
+@click.option('--snp_density_step',
+              help='window step to calculate snp density.',
+              type=click.INT,
+              default=0)
 @click.option('--vcf_split_dir',
               help=('Directory to save snp pickle file for each sample.'
                     'Default is outdir/pickle'),
@@ -150,7 +154,7 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
          wild_alt_exp, min_depth, snp_number_window, snp_number_step,
          vcf_ann_file, qtlseqr_window, ref_freq, pop_stru, qtlseqr, ed,
          p_ref_freq, background_ref_freq, chr_size, qtlseqr_ref_freq,
-         qtlseqr_min_depth, chr_window):
+         qtlseqr_min_depth, snp_density_window, snp_density_step):
     if vcf_file or vcf_table:
         vcf_dir = list(vcf_dir)
         if vcf_split_dir is None:
@@ -213,6 +217,7 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
     outPath = Path(outdir)
     outdir_name = outPath.name
     results_dir = outPath / f'{outdir_name}-results'
+    plot_cmds = []
 
     # snpDensity results
     logger.info('copy snpDensity files...')
@@ -223,9 +228,20 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
 
     snp_freq_bed = outPath / f"{snpscore_obj.group_label}.snp.plot.bed"
     snp_density_file_list = [VarScoreDocName.snp_density.value]
+    chr_window = make_chr_window(chr_size, snp_density_window,
+                                 snp_density_step, outPath)
     if Path(chr_window).is_file():
-        snp_freq_stats = fmt_snp_density_file.with_suffix('.stats.csv')
+        window_str = window_number_format(snp_density_window)
+        if snp_density_step:
+            slide_str = window_number_format(snp_density_step)
+            density_stats_suffix = f'.window{window_str}_slide{slide_str}.csv'
+        else:
+            density_stats_suffix = f'.window{window_str}.csv'
+        snp_freq_stats = fmt_snp_density_file.with_suffix(density_stats_suffix)
         snp_density_stats(chr_window, snp_freq_bed, snp_freq_stats)
+        plot_cmds.append(
+            score_plot(snp_freq_stats, 'density-new', snp_freq_stats.stem,
+                       chr_size, 'web'))
     else:
         logger.warning(f'chromosome window file is not valid: {chr_window}...')
     cp_files(snp_density_file_list, snp_density_dir)
@@ -244,13 +260,12 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
     snp_score_plt = snp_score_file.with_suffix('.plot.jpg')
     cp_files([VarScoreDocName.var_score.value], varBScore_dir)
 
-    plot_cmds = []
     plot_cmds.append(
         score_plot(fmt_snp_score_file, 'var', fmt_snp_score_file.stem,
                    chr_size, 'web'))
-    plot_cmds.append(
-        score_plot(fmt_snp_density_file, 'density', fmt_snp_density_file.stem,
-                   chr_size, 'web'))
+    # plot_cmds.append(
+    #     score_plot(fmt_snp_density_file, 'density', fmt_snp_density_file.stem,
+    #                chr_size, 'web'))
 
     if qtlseqr or ed:
         qtlseqr_file = qtlseqr_obj.filePath
@@ -277,10 +292,10 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
         if ed:
             plot_cmds.append(
                 score_plot(edFile, 'ED', edFile.stem, chr_size, 'web'))
-        plot_cmds = list(filter(None, plot_cmds))
+    plot_cmds = list(filter(None, plot_cmds))
+    if plot_cmds:
         logger.info('Launch plot jobs...')
-        if plot_cmds:
-            async_batch_sh_jobs(plot_cmds, thread=thread)
+        async_batch_sh_jobs(plot_cmds, thread=thread)
     logger.info('The End.')
 
 
