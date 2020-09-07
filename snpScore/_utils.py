@@ -1,4 +1,5 @@
 import re
+import sys
 import json
 import shutil
 import jinja2
@@ -350,8 +351,12 @@ def score_plot(score_file,
 def extract_snpeff_anno(anno_line):
     anno_stats = []
     fileds = (1, 3, 6, 9, 10)
-    gene_anno = anno_line.split(';')[0]
-    anno_line_stats = gene_anno.split(",")
+    try:
+        gene_anno = anno_line.split(';')[0]
+        anno_line_stats = gene_anno.split(",")
+    except Exception:
+        print(anno_line)
+        sys.exit(1)
     for annStr in anno_line_stats:
         annDetailArray = annStr.split("|")
         filed_stats = []
