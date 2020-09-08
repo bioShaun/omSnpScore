@@ -1,11 +1,12 @@
 1.CHROM : Chromosome
 2.POS : Position
 3.ALT : Alternative allele
-4.wild.AF : wild bulk allele frequency (the same as snp-index)
-5.mutant.AF : mutant bulk allele frequency (the same as snp-index)
-6.REF_FRQ(AFD) : total allele coverage of two bulk / total coverage (both refer and allele) of two bulk
-7.wild.DP : wild bulk read coverage depth
-8.mutant.DP : mutant bulk read coverage depth
+4.wild.AF : wild bulk alternative allele frequency (the same as snp-index)
+5.mutant.AF : mutant bulk alternative allele frequency (the same as snp-index)
+6.AFD(deltaSNP) : Alternative allele frequency difference (mutant.AF - wild.AF)
+7.REF_FRQ : total ref allele coverage of two bulk / total coverage (both refer and allele) of two bulk
+8.wild.DP : wild bulk read coverage depth
+9.mutant.DP : mutant bulk read coverage depth
 
 
 Figure plot Citation:

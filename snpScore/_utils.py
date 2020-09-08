@@ -17,9 +17,9 @@ from pybedtools import BedTool
 from datetime import datetime
 from ._var import GROUPS, OFFSET
 from ._var import SnpGroup, SnpRep, SnpGroupFreq, VarScoreParams
-from ._var import SNP_SCORE_PLOT, SNP_DENSITY_OUT_COL, COLUMN_NAME_MAP
+from ._var import SNP_SCORE_PLOT, COLUMN_NAME_MAP, SNP_BASIC_COL
 from ._var import VAR_SCORE_OUT_COL
-from ._var import SCIENTIFIC_NUMBER_COLS, ED_SPECIFIC_COLS, QTLSEQR_BASIC_COLS, QTLSEQR_SPECIFIC_COLS
+from ._var import SCIENTIFIC_NUMBER_COLS, ED_SPECIFIC_COLS, QTLSEQR_SPECIFIC_COLS
 
 getcontext().prec = 3
 
@@ -461,11 +461,12 @@ def wrap_param_arg(args):
 
 def add_qtlserq_like_cols(df: pd.DataFrame,
                           out_column: List[str]) -> pd.DataFrame:
-    df.loc[:, 'REF_FRQ(AFD)'] = (df['mutant.REF.AD'] + df['wild.REF.AD']) / (
+    df.loc[:, 'REF_FRQ'] = (df['mutant.REF.AD'] + df['wild.REF.AD']) / (
         df['mutant.REF.AD'] + df['wild.REF.AD'] + df['mutant.ALT.AD'] +
         df['wild.ALT.AD'])
     df.loc[:, 'wild.DP'] = df['wild.REF.AD'] + df['wild.ALT.AD']
     df.loc[:, 'mutant.DP'] = df['mutant.REF.AD'] + df['mutant.ALT.AD']
+    df.loc[:, 'AFD(deltaSNP)'] = df['mutant.FREQ'] - df['wild.FREQ']
 
     df.rename(columns=COLUMN_NAME_MAP, inplace=True)
     return df[out_column]
@@ -477,7 +478,7 @@ def reformat_df(df: pd.DataFrame,
     if sortby:
         df.sort_values(sortby, inplace=True)
     if '.snp.freq.csv' in file_name:
-        df = add_qtlserq_like_cols(df, SNP_DENSITY_OUT_COL)
+        df = add_qtlserq_like_cols(df, SNP_BASIC_COL)
     elif '.var.score.top' in file_name:
         df = add_qtlserq_like_cols(df, VAR_SCORE_OUT_COL)
     elif '.var.score.csv' in file_name:
@@ -656,7 +657,7 @@ def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
 def extract_qtlseqr_result(df: pd.DataFrame, selected_cols: List[str],
                            outFile: Path) -> None:
     if not outFile.is_file():
-        out_cols = QTLSEQR_BASIC_COLS + selected_cols
+        out_cols = SNP_BASIC_COL + selected_cols
         df = df[out_cols].copy()
         df.to_csv(outFile, index=False, float_format='%.3f')
 
@@ -666,6 +667,7 @@ def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
     df = pd.read_csv(qtlseqrFile)
 
     ad_cols = [each for each in df.columns if 'AD' in each]
+    df.loc[:, 'AFD(deltaSNP)'] = df['deltaSNP']
     df.rename(columns=COLUMN_NAME_MAP, inplace=True)
     df.drop(ad_cols, axis=1, inplace=True)
     for col_i in SCIENTIFIC_NUMBER_COLS:

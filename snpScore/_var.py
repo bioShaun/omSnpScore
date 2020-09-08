@@ -68,21 +68,20 @@ COLUMN_NAME_MAP = {
     'HIGH.FREQ': 'mutant.AF',
     'DP.HIGH': 'mutant.DP',
     'SNPindex.HIGH': 'mutant.SNPindex',
-    'REF_FRQ': 'REF_FRQ(AFD)',
+    'REF_FRQ': 'REF_FRQ',
     'euc': 'ED'
 }
 
-## snp density
-SNP_DENSITY_OUT_COL = [
-    'CHROM', 'POS', 'ALT', 'wild.AF', 'mutant.AF', 'REF_FRQ(AFD)', 'wild.DP',
-    'mutant.DP'
+SNP_BASIC_COL = [
+    'CHROM', 'POS', 'ALT', 'wild.AF', 'mutant.AF', 'AFD(deltaSNP)', 'REF_FRQ',
+    'wild.DP', 'mutant.DP'
 ]
 
 # varscore
 VAR_SCORE_OUT_COL = [
     'CHROM', 'Start', 'End', 'varBScore', 'wild.AF', 'mutant.AF',
-    'REF_FRQ(AFD)', 'wild.DP', 'mutant.DP', 'POS', 'REF', 'ALT', 'Feature',
-    'Gene', 'Transcript'
+    'AFD(deltaSNP)', 'REF_FRQ', 'wild.DP', 'mutant.DP', 'POS', 'REF', 'ALT',
+    'Feature', 'Gene', 'Transcript'
 ]
 
 ## qtlseqr
@@ -91,16 +90,11 @@ SCIENTIFIC_NUMBER_COLS = [
     'dis2edcutoff'
 ]
 
-QTLSEQR_BASIC_COLS = [
-    'CHROM', 'POS', 'ALT', 'wild.AF', 'mutant.AF', 'REF_FRQ(AFD)', 'wild.DP',
-    'mutant.DP'
-]
-
 ED_SPECIFIC_COLS = ['ED', 'fitted', 'unfitted', 'dis2edcutoff']
 
 QTLSEQR_SPECIFIC_COLS = [
-    'deltaSNP', 'nSNPs', 'tricubeDeltaSNP', 'Gprime', 'negLog10Pval', 'qvalue',
-    'minDP', 'CI_95', 'CI_99'
+    'nSNPs', 'tricubeDeltaSNP', 'Gprime', 'negLog10Pval', 'qvalue', 'minDP',
+    'CI_95', 'CI_99'
 ]
 
 
