@@ -189,24 +189,24 @@ class snpScoreBox:
                 self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
                                              inplace=True,
                                              axis=1)
-                if not self._snp_window_ann_df.empty:
-                    snpeff_anno = list(
-                        self._snp_window_ann_df.INFO.map(extract_snpeff_anno))
-                    snpeff_anno_df = pd.DataFrame(snpeff_anno)
-                    snpeff_anno_df.columns = [
-                        'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
-                        'Variant_Protein_Level'
-                    ]
-                    self._snp_window_ann_df = pd.concat(
-                        [self._snp_window_ann_df, snpeff_anno_df], axis=1)
-                    self._snp_window_ann_df.drop('INFO', axis=1, inplace=True)
-                    self._snp_window_ann_df = split_dataframe_rows(
-                        self._snp_window_ann_df,
-                        column_selectors=[
-                            'Feature', 'Gene', 'Transcript',
-                            'Variant_DNA_Level', 'Variant_Protein_Level'
-                        ],
-                        row_delimiter='|')
+                # if not self._snp_window_ann_df.empty:
+                #     snpeff_anno = list(
+                #         self._snp_window_ann_df.INFO.map(extract_snpeff_anno))
+                #     snpeff_anno_df = pd.DataFrame(snpeff_anno)
+                #     snpeff_anno_df.columns = [
+                #         'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+                #         'Variant_Protein_Level'
+                #     ]
+                #     self._snp_window_ann_df = pd.concat(
+                #         [self._snp_window_ann_df, snpeff_anno_df], axis=1)
+                #     self._snp_window_ann_df.drop('INFO', axis=1, inplace=True)
+                #     self._snp_window_ann_df = split_dataframe_rows(
+                #         self._snp_window_ann_df,
+                #         column_selectors=[
+                #             'Feature', 'Gene', 'Transcript',
+                #             'Variant_DNA_Level', 'Variant_Protein_Level'
+                #         ],
+                #         row_delimiter='|')
             else:
                 self._snp_window_ann_df = self.alt_freq_dis_df
         return self._snp_window_ann_df
@@ -215,10 +215,10 @@ class snpScoreBox:
     def score_ann_df(self):
         # add snp annotation to snp score table and flat
         logger.info('Annotating snp score...')
-        ann_score_df = self.score_df.sort_values(['snp_score'],
-                                                 ascending=False)
-        ann_score_df = ann_score_df[:100]
-        self._score_ann_df = ann_score_df.merge(
+        # ann_score_df = self.score_df.sort_values(['snp_score'],
+        #                                          ascending=False)
+        #ann_score_df = ann_score_df[:100]
+        self._score_ann_df = self.score_df.merge(
             self.snp_window_ann_df,
             left_on=['Chrom', 'Start', 'End'],
             right_on=['Chrom', 'Start', 'End'],
@@ -253,7 +253,7 @@ class snpScoreBox:
                 score_plot(self.score_file, method,
                            f'{score_name}.{method_name}', self.chr_size))
             self.score_ann_file = self.outdir / \
-                f'{score_name}.{method}.score.top{self.ann_region_num}.ann.csv'
+                f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
                 self.score_ann_df.to_csv(self.score_ann_file, index=False)
                 if self.save_mem:

@@ -1,3 +1,4 @@
+import imp
 from ._load import tableFromVcf
 from ._load import tableFromVcfMP
 from ._load import tableFromSelectTable
@@ -29,8 +30,12 @@ from ._utils import cp_if_not_exist
 from ._utils import format_outfile
 from ._utils import make_chr_window
 from ._utils import window_number_format
+from ._utils import add_snp_ann
+from ._utils import check_output
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE
 from ._var import CHR_WINDOW
 from ._var import VarScoreOutDirName
 from ._var import VarScoreDocName
+from ._var import SNP_DENSITY_POS_COLS
+from ._var import QTLSEQR_POS_COLS

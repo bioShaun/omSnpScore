@@ -52,6 +52,11 @@ GROUPS = tuple([grp_i.value for grp_i in SnpGroup.__members__.values()])
 MUT_NAME = SnpGroup.mut.value
 WILD_NAME = SnpGroup.wild.value
 
+# position cols
+SNP_DENSITY_POS_COLS = ['Chr', 'Pos', 'Alt']
+ANN_POS_COLS = ['#CHROM', 'POS', 'ALT']
+QTLSEQR_POS_COLS = ['CHROM', 'POS', 'ALT']
+
 # OUTPUT TABLE
 
 COLUMN_NAME_MAP = {
@@ -62,6 +67,9 @@ COLUMN_NAME_MAP = {
     'snp_score': 'varBScore',
     'mutant.FREQ': 'mutant.AF',
     'wild.FREQ': 'wild.AF',
+    'mutant_parent.FREQ': 'mutant_parent.AF',
+    'wild_parent.FREQ': 'wild_parent.AF',
+    'background.FREQ': 'background.AF',
     'LOW.FREQ': 'wild.AF',
     'DP.LOW': 'wild.DP',
     'SNPindex.LOW': 'wild.SNPindex',
@@ -73,18 +81,27 @@ COLUMN_NAME_MAP = {
 }
 
 SNP_BASIC_COL = [
-    'CHROM', 'POS', 'ALT', 'wild.AF', 'mutant.AF', 'AFD(deltaSNP)', 'REF_FRQ',
-    'wild.DP', 'mutant.DP'
+    'CHROM', 'POS', 'REF', 'ALT', 'wild.AF', 'mutant.AF', 'wild_parent.AF',
+    'mutant_parent.AF', 'background.AF', 'AFD(deltaSNP)', 'REF_FRQ', 'wild.DP',
+    'mutant.DP', 'wild_parent.DP', 'mutant_parent.DP', 'background.DP'
+]
+
+QTLSERQ_BASIC_COL = [
+    'CHROM', 'POS', 'REF', 'ALT', 'wild.AF', 'mutant.AF', 'AFD(deltaSNP)',
+    'REF_FRQ', 'wild.DP', 'mutant.DP'
 ]
 
 # varscore
 VAR_SCORE_OUT_COL = [
     'CHROM', 'Start', 'End', 'varBScore', 'wild.AF', 'mutant.AF',
-    'AFD(deltaSNP)', 'REF_FRQ', 'wild.DP', 'mutant.DP', 'POS', 'REF', 'ALT',
-    'Feature', 'Gene', 'Transcript'
+    'wild_parent.AF', 'mutant_parent.AF', 'background.AF', 'AFD(deltaSNP)',
+    'REF_FRQ', 'wild.DP', 'mutant.DP', 'wild_parent.DP', 'mutant_parent.DP',
+    'background.DP', 'POS', 'REF', 'ALT', 'INFO'
 ]
 
 ## qtlseqr
+QTLSEQR_CHROM_NAME = 'CHROM'
+
 SCIENTIFIC_NUMBER_COLS = [
     'pvalue', 'negLog10Pval', 'qvalue', 'ED', 'fitted', 'unfitted',
     'dis2edcutoff'
@@ -96,6 +113,9 @@ QTLSEQR_SPECIFIC_COLS = [
     'nSNPs', 'tricubeDeltaSNP', 'Gprime', 'negLog10Pval', 'qvalue', 'minDP',
     'CI_95', 'CI_99'
 ]
+
+# ANNOTATION OUT
+ANN_OUT_COLS = ['Feature', 'Gene', 'Transcript']
 
 
 # OUTPUT DIR

@@ -5,21 +5,23 @@ import shutil
 import jinja2
 import asyncio
 import delegator
+import functools
 import numpy as np
 import pandas as pd
 from io import StringIO
 from loguru import logger
 from decimal import Decimal, getcontext
-from typing import List, Optional
+from typing import Callable, Iterable, List, Optional, Union
 from pathlib import Path, PurePath
 from functools import reduce
 from pybedtools import BedTool
 from datetime import datetime
 from ._var import GROUPS, OFFSET
 from ._var import SnpGroup, SnpRep, SnpGroupFreq, VarScoreParams
-from ._var import SNP_SCORE_PLOT, COLUMN_NAME_MAP, SNP_BASIC_COL
-from ._var import VAR_SCORE_OUT_COL
+from ._var import SNP_SCORE_PLOT, COLUMN_NAME_MAP, SNP_BASIC_COL, QTLSERQ_BASIC_COL
+from ._var import VAR_SCORE_OUT_COL, ANN_POS_COLS, SNP_DENSITY_POS_COLS, QTLSEQR_POS_COLS
 from ._var import SCIENTIFIC_NUMBER_COLS, ED_SPECIFIC_COLS, QTLSEQR_SPECIFIC_COLS
+from ._var import ANN_OUT_COLS, QTLSEQR_CHROM_NAME
 
 getcontext().prec = 3
 
@@ -459,44 +461,60 @@ def wrap_param_arg(args):
         yield arg_i
 
 
+def valid_output_cols(output_cols: List[str], df: pd.DataFrame) -> List[str]:
+    return [col_i for col_i in output_cols if col_i in df.columns]
+
+
 def add_qtlserq_like_cols(df: pd.DataFrame,
                           out_column: List[str]) -> pd.DataFrame:
     df.loc[:, 'REF_FRQ'] = (df['mutant.REF.AD'] + df['wild.REF.AD']) / (
         df['mutant.REF.AD'] + df['wild.REF.AD'] + df['mutant.ALT.AD'] +
         df['wild.ALT.AD'])
-    df.loc[:, 'wild.DP'] = df['wild.REF.AD'] + df['wild.ALT.AD']
-    df.loc[:, 'mutant.DP'] = df['mutant.REF.AD'] + df['mutant.ALT.AD']
+    for grp in [each.value for each in SnpGroup.__members__.values()]:
+        if f'{grp}.REF.AD' in df.columns:
+            df.loc[:, f'{grp}.DP'] = df[f'{grp}.REF.AD'] + df[f'{grp}.ALT.AD']
+            df.loc[:, f'{grp}.DP'] = df[f'{grp}.REF.AD'] + df[f'{grp}.ALT.AD']
     df.loc[:, 'AFD(deltaSNP)'] = df['mutant.FREQ'] - df['wild.FREQ']
 
     df.rename(columns=COLUMN_NAME_MAP, inplace=True)
-    return df[out_column]
+    df = df.loc[:, ~df.columns.duplicated()]
+    real_out_col = valid_output_cols(out_column, df)
+    return df[real_out_col]
 
 
 def reformat_df(df: pd.DataFrame,
                 file_name: str,
+                chr_list: Optional[Iterable[str]] = None,
                 sortby: Optional[List[str]] = None) -> pd.DataFrame:
     if sortby:
         df.sort_values(sortby, inplace=True)
     if '.snp.freq.csv' in file_name:
         df = add_qtlserq_like_cols(df, SNP_BASIC_COL)
-    elif '.var.score.top' in file_name:
+    elif '.var.score.ann.csv' in file_name:
         df = add_qtlserq_like_cols(df, VAR_SCORE_OUT_COL)
     elif '.var.score.csv' in file_name:
         df.rename(columns=COLUMN_NAME_MAP, inplace=True)
     else:
         pass
+    if chr_list is not None:
+        df = df[df[QTLSEQR_CHROM_NAME].isin(chr_list)]
     return df
 
 
 def merge_split_file(file_dir,
                      file_pattern,
+                     chr_list: Optional[Iterable[str]] = None,
+                     top_rate: float = 0.05,
                      sortby=None,
                      out_dir=None,
                      input_header='infer',
                      input_sep=',',
                      out_header=True,
                      out_sep=','):
-    pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
+    if 'qtlseqr' in file_pattern or 'snp.freq.csv' in file_pattern:
+        pattern_file = Path(file_dir).glob(f'split/*/fmt/{file_pattern}')
+    else:
+        pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
     df_list = []
     for file_i in pattern_file:
         df_list.append(pd.read_csv(file_i, header=input_header, sep=input_sep))
@@ -505,10 +523,19 @@ def merge_split_file(file_dir,
     out_dir.mkdir(parents=True, exist_ok=True)
     outfile = Path(out_dir) / file_pattern
     df = pd.concat(df_list)
-    df = reformat_df(df, file_pattern, sortby=sortby)
+    if not ('qtlseqr' in file_pattern or 'snp.freq.csv' in file_pattern):
+        df = reformat_df(df, file_pattern, sortby=sortby, chr_list=chr_list)
     if not outfile.is_file():
         if 'qtlseqr' in file_pattern:
             df.to_csv(outfile, index=False)
+        elif '.var.score.ann.csv' in file_pattern:
+            outFilePath = outfile.with_suffix(f'.top{top_rate}.csv')
+            out_cols = valid_output_cols(VAR_SCORE_OUT_COL[:-1], df)
+            top_ranked_results(df,
+                               'varBScore',
+                               out_cols,
+                               outFilePath,
+                               select_rate=top_rate)
         else:
             df.to_csv(outfile,
                       index=False,
@@ -520,12 +547,30 @@ def merge_split_file(file_dir,
 
 def format_outfile(filePath: Path,
                    outDir: Path,
+                   top_rate: float = 0.05,
+                   merge_cols: List[str] = SNP_DENSITY_POS_COLS,
+                   float_format: Optional[str] = '%.3f',
+                   chr_list: Optional[Iterable[str]] = None,
+                   ann_df: Optional[pd.DataFrame] = None,
                    sortby: Optional[List[str]] = None) -> Path:
     df = pd.read_csv(filePath)
     outFilePath = outDir / filePath.name
     if not outFilePath.is_file():
-        df = reformat_df(df, filePath.name, sortby=sortby)
-        df.to_csv(outFilePath, index=False, float_format='%.3f')
+        if ann_df is not None:
+            df = add_snp_ann(df, merge_cols=merge_cols, ann_df=ann_df)
+        df = reformat_df(df, filePath.name, sortby=sortby, chr_list=chr_list)
+        if df.empty:
+            return outFilePath
+        if '.var.score.ann.csv' in filePath.name:
+            outFilePath = outFilePath.with_suffix(f'.top{top_rate}.csv')
+            out_cols = valid_output_cols(VAR_SCORE_OUT_COL[:-1], df)
+            top_ranked_results(df,
+                               'varBScore',
+                               out_cols,
+                               outFilePath,
+                               select_rate=top_rate)
+        else:
+            df.to_csv(outFilePath, index=False, float_format=float_format)
     return outFilePath
 
 
@@ -657,28 +702,78 @@ def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
 def extract_qtlseqr_result(df: pd.DataFrame, selected_cols: List[str],
                            outFile: Path) -> None:
     if not outFile.is_file():
-        out_cols = SNP_BASIC_COL + selected_cols
+        out_cols = QTLSERQ_BASIC_COL + selected_cols
         df = df[out_cols].copy()
+        df = sientific_number_col_to_str(df)
         df.to_csv(outFile, index=False, float_format='%.3f')
 
 
-def split_qtlseqr_results(qtlseqrFile: Path, qtlseqrAloneFile: Path,
-                          edFile: Path) -> None:
-    df = pd.read_csv(qtlseqrFile)
+def top_ranked_results(df: pd.DataFrame,
+                       rank_col: str,
+                       out_cols: List[str],
+                       out_file: Path,
+                       select_rate: float = 0.05) -> None:
+    if not out_file.is_file():
+        top_cutoff = np.quantile(sorted(df[rank_col].unique()),
+                                 1 - select_rate)
+        df = df[df[rank_col] >= top_cutoff]
+        df.reset_index(drop=True, inplace=True)
+        snpeff_anno = list(df.INFO.map(extract_snpeff_anno))
+        snpeff_anno_df = pd.DataFrame(snpeff_anno)
+        snpeff_anno_df.columns = [
+            'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+            'Variant_Protein_Level'
+        ]
+        ann_df = pd.concat([df, snpeff_anno_df], axis=1)
+        ann_df.drop('INFO', axis=1, inplace=True)
+        ann_df = split_dataframe_rows(ann_df,
+                                      column_selectors=[
+                                          'Feature', 'Gene', 'Transcript',
+                                          'Variant_DNA_Level',
+                                          'Variant_Protein_Level'
+                                      ],
+                                      row_delimiter='|')
+        out_cols = out_cols + ANN_OUT_COLS
+        out_df = ann_df[out_cols]
+        ann_df = sientific_number_col_to_str(ann_df)
+        out_df.to_csv(out_file, index=False)
 
+
+def sientific_number_col_to_str(df):
+    for col_i in SCIENTIFIC_NUMBER_COLS:
+        if col_i in df.columns:
+            df.loc[:, col_i] = df[col_i].astype('str')
+    return df
+
+
+def split_qtlseqr_results(qtlseqrFile: Path,
+                          qtlseqrAloneFile: Path,
+                          edFile: Path,
+                          chr_list: Optional[Iterable[str]] = None,
+                          top_rate: float = 0.05,
+                          ann_df: Optional[pd.DataFrame] = None) -> None:
+    df = pd.read_csv(qtlseqrFile)
+    df.loc[:, QTLSEQR_CHROM_NAME] = df[QTLSEQR_CHROM_NAME].astype('str')
+    if chr_list is not None:
+        df = df[df[QTLSEQR_CHROM_NAME].isin(chr_list)]
     ad_cols = [each for each in df.columns if 'AD' in each]
     df.loc[:, 'AFD(deltaSNP)'] = df['deltaSNP']
     df.rename(columns=COLUMN_NAME_MAP, inplace=True)
     df.drop(ad_cols, axis=1, inplace=True)
-    for col_i in SCIENTIFIC_NUMBER_COLS:
-        if col_i in df.columns:
-            df.loc[:, col_i] = df[col_i].astype('str')
+    if ann_df is not None:
+        df = add_snp_ann(df, merge_cols=QTLSEQR_POS_COLS, ann_df=ann_df)
 
     if 'ED' in df.columns:
         extract_qtlseqr_result(df, ED_SPECIFIC_COLS, edFile)
+        edTopFile = edFile.with_suffix(f'.top{top_rate}.csv')
+        out_cols = QTLSERQ_BASIC_COL + ED_SPECIFIC_COLS
+        top_ranked_results(df, 'fitted', out_cols, edTopFile, top_rate)
 
     if 'Gprime' in df.columns:
         extract_qtlseqr_result(df, QTLSEQR_SPECIFIC_COLS, qtlseqrAloneFile)
+        qtlseqrTopFile = qtlseqrAloneFile.with_suffix(f'.top{top_rate}.csv')
+        out_cols = QTLSERQ_BASIC_COL + QTLSEQR_SPECIFIC_COLS
+        top_ranked_results(df, 'Gprime', out_cols, qtlseqrTopFile, top_rate)
 
 
 def snp_density_stats(window_bed: PurePath, snp_density_bed: Path,
@@ -731,3 +826,24 @@ def make_chr_window(chr_size: Path, window: int, step: int,
         if not window_file.is_file():
             raise SnpDensityWindowFailed
     return window_file
+
+
+def add_snp_ann(df: pd.DataFrame, merge_cols: List[str],
+                ann_df: pd.DataFrame) -> pd.DataFrame:
+    chrom_col = merge_cols[0]
+    df.loc[:, chrom_col] = df[chrom_col].astype('str')
+    return df.merge(ann_df, left_on=merge_cols, right_on=ANN_POS_COLS)
+
+
+class CheckOutPutFunc:
+    def __init__(self, output: Path, func: Callable):
+        self.output = output
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        if not self.output.exists():
+            return self.func(*args, **kwargs)
+
+
+def check_output(outFile: Path):
+    return functools.partial(CheckOutPutFunc, outFile)

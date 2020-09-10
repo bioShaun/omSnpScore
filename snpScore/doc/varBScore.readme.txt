@@ -5,23 +5,29 @@ xxxxx.var.score.csv   :  table for varBScore plot
 4.varBScore	:  varBScore for each windows
 
 
-xxxxx.var.score.top100.ann.csv : top 100 windows of varBScore with gene information
+xxxxx.var.score.ann.topX.csv : windows of varBScore with gene information with varBScore at top X
 1.CHROM	: chrome name
 2.Start	: window start position
-3.End	:	window end position
+3.End :	window end position
 4.varBScore	:  varBScore for each windows
-5.wild.AF	: Alle frequency of wild bulk
+5.wild.AF : Alle frequency of wild bulk
 6.mutant.AF : Alle frequency of mutant bulk
-7.AFD(deltaSNP) : Alternative allele frequency difference (mutant.AF - wild.AF)
-8.REF_FRQ : total ref allele coverage of two bulk / total coverage (both refer and allele) of two bulk
-9.wild.DP : wild bulk read coverage depth
-10.mutant.DP : mutant bulk read coverage depth
-11.POS	: Positon
-12.REF : Reference genotype
-13.ALT : Alter genotype
-14.Feature ： Variant impact type
-15.Gene : Gene ID on this locus
-16.Transcript : Transcript ID on this locus
+7.wild_parent.AF : Alle frequency of wild parent bulk (Optional)
+8.mutant_parent.AF : Alle frequency of mutant parent bulk (Optional)
+9.background.AF : Alle frequency of background bulk (Optional)
+10.AFD(deltaSNP) : Alternative allele frequency difference (mutant.AF - wild.AF)
+11.REF_FRQ : total ref allele coverage of two bulk / total coverage (both refer and allele) of two bulk
+12.wild.DP : wild bulk read coverage depth
+13.mutant.DP : mutant bulk read coverage depth 
+14.wild_parent.DP : wild parent bulk read coverage depth (Optional)
+15.mutant_parent.DP : mutant parent bulk read coverage depth (Optional)
+16.background.DP : background bulk read coverage depth (Optional)
+17.POS : Positon
+18.REF : Reference genotype
+19.ALT : Alter genotype
+20.Feature : Variant impact type
+21.Gene : Gene ID on this locus
+22.Transcript : Transcript ID on this locus
 
 
 varBScore method:

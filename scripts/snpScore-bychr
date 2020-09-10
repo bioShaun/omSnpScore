@@ -2,6 +2,7 @@
 
 import click
 import json
+import pandas as pd
 from loguru import logger
 from pathlib import Path
 from snpScore import tableFromVcf, sample_and_group_for_web
@@ -9,7 +10,7 @@ from snpScore import tableFromSelectTable
 from snpScore import snpTableMP, async_batch_sh_jobs
 from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 from snpScore import outdir_suffix_from_params
-from snpScore import freq2qtlseqr
+from snpScore import freq2qtlseqr, format_outfile, QTLSEQR_POS_COLS
 
 
 @click.command()
@@ -86,8 +87,10 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
         mutant_alt_exp=input_params.get('mutant_alt_exp'),
         wild_alt_exp=input_params.get('wild_alt_exp'),
         vcf_ann_file=vcf_ann_file,
-        filter_method=input_params.get('filter_method', "nonsymmetrical"))
+        filter_method=input_params.get('filter_method', "nonsymmetrical"),
+        save_mem=False)
     snpscore_obj.score_jobs
+
     if input_params.get('qtlseqr') or input_params.get('ed'):
         qtlseqr_snp_table = freq2qtlseqr(snp_table_obj.alt_freq_file)
         qtlseqr_ref_freq = input_params.get('qtlseqr_ref_freq', 0.3)
@@ -105,11 +108,30 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
             run_ed=input_params.get('ed'),
             web=True)
         qtlseqr_obj.launch_job
-    """run_jobs.extend(snpscore_obj.score_jobs)
-    logger.info('Launch snpScore jobs...')
-    async_batch_sh_jobs(run_jobs, thread=4)
-    logger.info('The End.')
-    print(full_outdir) """
+
+    # format output
+    chr_df = pd.read_csv(chr_size,
+                         sep='\t',
+                         header=None,
+                         names=['chrom', 'size'])
+    ## snp density
+    format_res_dir = results_dir / 'fmt'
+    format_res_dir.mkdir(parents=True, exist_ok=True)
+    snp_density_file = results_dir / f"{snpscore_obj.group_label}.snp.freq.csv"
+    format_outfile(snp_density_file,
+                   format_res_dir,
+                   ann_df=snpscore_obj.snp_ann_df,
+                   chr_list=chr_df.chrom.astype('str'))
+
+    ## qtlseqr
+    if input_params.get('qtlseqr') or input_params.get('ed'):
+        qtlseqr_file = qtlseqr_obj.filePath
+        format_outfile(qtlseqr_file,
+                       format_res_dir,
+                       ann_df=snpscore_obj.snp_ann_df,
+                       chr_list=chr_df.chrom.astype('str'),
+                       float_format=None,
+                       merge_cols=QTLSEQR_POS_COLS)
 
 
 if __name__ == '__main__':
