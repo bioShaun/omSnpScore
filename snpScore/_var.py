@@ -56,7 +56,7 @@ WILD_NAME = SnpGroup.wild.value
 SNP_DENSITY_POS_COLS = ['Chr', 'Pos', 'Alt']
 ANN_POS_COLS = ['#CHROM', 'POS', 'ALT']
 QTLSEQR_POS_COLS = ['CHROM', 'POS', 'ALT']
-
+SNP_DENSITY_SORT_COL = ['CHROM', 'POS']
 # OUTPUT TABLE
 
 COLUMN_NAME_MAP = {
@@ -99,6 +99,8 @@ VAR_SCORE_OUT_COL = [
     'background.DP', 'POS', 'REF', 'ALT', 'INFO'
 ]
 
+VAR_SCORE_ANN_SORT_COL = ['CHROM', 'Start', 'POS']
+VAR_SCORE_SORT_COL = ['CHROM', 'Start']
 ## qtlseqr
 QTLSEQR_CHROM_NAME = 'CHROM'
 

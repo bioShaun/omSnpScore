@@ -105,7 +105,6 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
     snp_score_file = merge_split_file(results_dir,
                                       snp_score_file_pattern,
-                                      sortby=["Chrom", "Start"],
                                       out_dir=varBScore_dir)
     plot_cmd.append(
         score_plot(snp_score_file, 'var', snp_score_file.stem, chr_size,
@@ -113,7 +112,6 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     snp_score_ann_file_pattern = f'{snpscore_obj.score_prefix}.var.score.ann.csv'
     snp_score_ann_file = merge_split_file(results_dir,
                                           snp_score_ann_file_pattern,
-                                          sortby=["Chrom", "Start"],
                                           out_dir=varBScore_dir)
 
     # SNP DENSITY
@@ -121,7 +119,6 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     snp_freq_file = merge_split_file(
         results_dir,
         f"{snpscore_obj.group_label}.snp.freq.csv",
-        sortby=["CHROM", "POS"],
         out_dir=snp_freq_dir)
     plot_cmd.append(
         score_plot(snp_freq_file, 'density', snp_freq_file.stem, chr_size,
@@ -130,7 +127,6 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     # SNP DENSITY bed
     snp_freq_bed = merge_split_file(results_dir,
                                     f"{snpscore_obj.group_label}.snp.plot.bed",
-                                    sortby=[0, 1],
                                     input_header=None,
                                     input_sep='\t',
                                     out_header=None,
@@ -149,9 +145,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                           run_qtlseqr=input_params.get('qtlseqr'),
                           run_ed=input_params.get('ed'),
                           web=True)
-    qtlseqr_file = merge_split_file(results_dir,
-                                    qtlseqr_obj.filePath.name,
-                                    sortby=["CHROM", "POS"])
+    qtlseqr_file = merge_split_file(results_dir, qtlseqr_obj.filePath.name)
     qtlSeqrDir = results_dir / VarScoreOutDirName.qtlseqr.value
     qtlSeqrDir.mkdir(parents=True, exist_ok=True)
     edDir = results_dir / VarScoreOutDirName.ed.value

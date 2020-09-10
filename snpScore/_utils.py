@@ -21,7 +21,7 @@ from ._var import SnpGroup, SnpRep, SnpGroupFreq, VarScoreParams
 from ._var import SNP_SCORE_PLOT, COLUMN_NAME_MAP, SNP_BASIC_COL, QTLSERQ_BASIC_COL
 from ._var import VAR_SCORE_OUT_COL, ANN_POS_COLS, SNP_DENSITY_POS_COLS, QTLSEQR_POS_COLS
 from ._var import SCIENTIFIC_NUMBER_COLS, ED_SPECIFIC_COLS, QTLSEQR_SPECIFIC_COLS
-from ._var import ANN_OUT_COLS, QTLSEQR_CHROM_NAME
+from ._var import ANN_OUT_COLS, QTLSEQR_CHROM_NAME, SNP_DENSITY_SORT_COL, VAR_SCORE_SORT_COL, VAR_SCORE_ANN_SORT_COL
 
 getcontext().prec = 3
 
@@ -484,20 +484,23 @@ def add_qtlserq_like_cols(df: pd.DataFrame,
 
 def reformat_df(df: pd.DataFrame,
                 file_name: str,
-                chr_list: Optional[Iterable[str]] = None,
-                sortby: Optional[List[str]] = None) -> pd.DataFrame:
-    if sortby:
-        df.sort_values(sortby, inplace=True)
+                chr_list: Optional[Iterable[str]] = None) -> pd.DataFrame:
+    sortby = SNP_DENSITY_SORT_COL
     if '.snp.freq.csv' in file_name:
         df = add_qtlserq_like_cols(df, SNP_BASIC_COL)
     elif '.var.score.ann.csv' in file_name:
         df = add_qtlserq_like_cols(df, VAR_SCORE_OUT_COL)
+        sortby = VAR_SCORE_ANN_SORT_COL
     elif '.var.score.csv' in file_name:
         df.rename(columns=COLUMN_NAME_MAP, inplace=True)
+        sortby = VAR_SCORE_SORT_COL
+    elif '.snp.plot.bed' in file_name:
+        sortby = [0, 1]
     else:
         pass
     if chr_list is not None:
         df = df[df[QTLSEQR_CHROM_NAME].isin(chr_list)]
+    df.sort_values(sortby, inplace=True)
     return df
 
 
@@ -505,7 +508,6 @@ def merge_split_file(file_dir,
                      file_pattern,
                      chr_list: Optional[Iterable[str]] = None,
                      top_rate: float = 0.05,
-                     sortby=None,
                      out_dir=None,
                      input_header='infer',
                      input_sep=',',
@@ -524,7 +526,9 @@ def merge_split_file(file_dir,
     outfile = Path(out_dir) / file_pattern
     df = pd.concat(df_list)
     if not ('qtlseqr' in file_pattern or 'snp.freq.csv' in file_pattern):
-        df = reformat_df(df, file_pattern, sortby=sortby, chr_list=chr_list)
+        df = reformat_df(df, file_pattern, chr_list=chr_list)
+    else:
+        df.sort_values(SNP_DENSITY_SORT_COL, inplace=True)
     if not outfile.is_file():
         if 'qtlseqr' in file_pattern:
             df.to_csv(outfile, index=False)
@@ -551,14 +555,13 @@ def format_outfile(filePath: Path,
                    merge_cols: List[str] = SNP_DENSITY_POS_COLS,
                    float_format: Optional[str] = '%.3f',
                    chr_list: Optional[Iterable[str]] = None,
-                   ann_df: Optional[pd.DataFrame] = None,
-                   sortby: Optional[List[str]] = None) -> Path:
+                   ann_df: Optional[pd.DataFrame] = None) -> Path:
     df = pd.read_csv(filePath)
     outFilePath = outDir / filePath.name
     if not outFilePath.is_file():
         if ann_df is not None:
             df = add_snp_ann(df, merge_cols=merge_cols, ann_df=ann_df)
-        df = reformat_df(df, filePath.name, sortby=sortby, chr_list=chr_list)
+        df = reformat_df(df, filePath.name, chr_list=chr_list)
         if df.empty:
             return outFilePath
         if '.var.score.ann.csv' in filePath.name:
