@@ -519,7 +519,11 @@ def merge_split_file(file_dir,
         pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
     df_list = []
     for file_i in pattern_file:
-        df_list.append(pd.read_csv(file_i, header=input_header, sep=input_sep))
+        try:
+            df_list.append(
+                pd.read_csv(file_i, header=input_header, sep=input_sep))
+        except pd.errors.EmptyDataError:
+            logger.warning(f'File is Empty: {file_i}')
     if out_dir is None:
         out_dir = Path(file_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
