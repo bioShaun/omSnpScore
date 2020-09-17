@@ -120,9 +120,6 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
         results_dir,
         f"{snpscore_obj.group_label}.snp.freq.csv",
         out_dir=snp_freq_dir)
-    plot_cmd.append(
-        score_plot(snp_freq_file, 'density', snp_freq_file.stem, chr_size,
-                   'web'))
 
     # SNP DENSITY bed
     snp_freq_bed = merge_split_file(results_dir,
@@ -134,6 +131,9 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
 
     snp_freq_stats = snp_freq_file.with_suffix('.stats.csv')
     snp_density_stats(CHR_WINDOW, snp_freq_bed, snp_freq_stats)
+    plot_cmd.append(
+        score_plot(snp_freq_stats, 'density-new', snp_freq_stats.stem,
+                   chr_size, 'web'))
 
     # QTLSEQR
     qtlseqr_obj = qtlSeqr(input_table='test',
