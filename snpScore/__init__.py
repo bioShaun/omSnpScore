@@ -39,3 +39,4 @@ from ._var import VarScoreOutDirName
 from ._var import VarScoreDocName
 from ._var import SNP_DENSITY_POS_COLS
 from ._var import QTLSEQR_POS_COLS
+from ._var import VAR_DENSITY_PLOT
