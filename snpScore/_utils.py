@@ -473,7 +473,6 @@ def add_qtlserq_like_cols(df: pd.DataFrame,
     for grp in [each.value for each in SnpGroup.__members__.values()]:
         if f'{grp}.REF.AD' in df.columns:
             df.loc[:, f'{grp}.DP'] = df[f'{grp}.REF.AD'] + df[f'{grp}.ALT.AD']
-            df.loc[:, f'{grp}.DP'] = df[f'{grp}.REF.AD'] + df[f'{grp}.ALT.AD']
     df.loc[:, 'AFD(deltaSNP)'] = df['mutant.FREQ'] - df['wild.FREQ']
 
     df.rename(columns=COLUMN_NAME_MAP, inplace=True)

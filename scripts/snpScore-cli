@@ -143,10 +143,6 @@ from snpScore import SNP_DENSITY_POS_COLS
               help='snp window size for calculation.',
               default=1e7,
               type=click.INT)
-@click.option('--qtlseqr_window',
-              help='snp window size for calculation.',
-              default=1e7,
-              type=click.INT)
 @click.option('--pop_stru',
               help=('the population structure. '
                     'Defaults to "F2" and assumes "RIL" otherwise.'),
