@@ -38,6 +38,8 @@ script_dir = Path(__file__).parent
 SNP_SCORE_PLOT = script_dir / 'plot/snpScorePlot.R'
 QTLSEQR_PLOT = script_dir / 'plot/run_qtlseqr.R'
 QTLSEQR_PLOT_WEB = script_dir / 'plot/run_qtlseqr_web.R'
+VAR_DENSITY_PLOT = script_dir / "plot/var_density_compare.R"
+
 DATA_DIR = PurePath(pkg_resources.resource_filename('snpScore', 'data'))
 CHR_SIZE = DATA_DIR / 'chr.size'
 CHR_WINDOW = DATA_DIR / 'chr.1m.window.bed'
