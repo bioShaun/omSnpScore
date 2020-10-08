@@ -62,30 +62,6 @@ def var_density_stats(
     return pd.concat(stats_df_list)
 
 
-def window_number_format(number: int) -> str:
-    megabase = 1000 * 1000
-    kilobase = 1000
-    if number >= megabase:
-        return f"{number / megabase}M"
-    elif number >= kilobase:
-        return f"{int(number / kilobase)}K"
-    else:
-        return str(number)
-
-
-def va_density_compare_file(sample_list: List[str], min_depth: int,
-                            window: int, step: Optional[int],
-                            outdir: str) -> Path:
-    sample_name = '_'.join(sample_list)
-    window_str = f"window_{window_number_format(window)}"
-    if step:
-        step_str = f"-step_{window_number_format(step)}"
-    else:
-        step_str = ""
-    filename = f"{sample_name}-depth_{min_depth}-{window_str}{step_str}.csv"
-    return Path(outdir) / filename
-
-
 def stats_plot(stats_file: Path) -> None:
     stats_plot = stats_file.with_suffix('.plot')
     plot_cmd = (f"Rscript {VAR_DENSITY_PLOT} "
@@ -99,8 +75,12 @@ def va_density_compare(samples: str,
                        chr_size: str,
                        outdir: str,
                        min_depth: int = 1,
+                       min_alt_freq: float = 0,
                        window: int = 1000_000,
                        step: Optional[int] = None):
+    out_path = Path(outdir)
+    if out_path.is_dir():
+        return
     sample_list = samples.split(',')
     chr_df = pd.read_csv(chr_size, sep='\t', index_col=0, names=['chr_len'])
     va_path = Path(va_dir)
@@ -110,18 +90,23 @@ def va_density_compare(samples: str,
         for chr_i in chr_df.index:
             chr_i_size = chr_df.loc[chr_i, 'chr_len']
             sample_chr_va_file = va_path / sample_i / f"{chr_i}.csv"
-            sample_chr_va_df = pd.read_csv(sample_chr_va_file)
-            sample_chr_va_df.loc[:,
-                                 'depth'] = sample_chr_va_df.ref_count + sample_chr_va_df.alt_count
-            sample_chr_va_df = sample_chr_va_df[
-                sample_chr_va_df.depth >= min_depth]
-            sample_df_list.append(
-                var_density_stats(chrom=str(chr_i),
-                                  chr_size=chr_i_size,
-                                  var_df=sample_chr_va_df,
-                                  window=window,
-                                  step=step,
-                                  label=sample_i))
+            if sample_chr_va_file.is_file():
+                sample_chr_va_df = pd.read_csv(sample_chr_va_file)
+                sample_chr_va_df.loc[:,
+                                     'depth'] = sample_chr_va_df.ref_count + sample_chr_va_df.alt_count
+                sample_chr_va_df = sample_chr_va_df[
+                    sample_chr_va_df.depth >= min_depth]
+                sample_chr_va_df.loc[:,
+                                     'alt_freq'] = sample_chr_va_df.alt_count / sample_chr_va_df.depth
+                sample_chr_va_df = sample_chr_va_df[
+                    sample_chr_va_df.alt_freq > min_alt_freq]
+                sample_df_list.append(
+                    var_density_stats(chrom=str(chr_i),
+                                      chr_size=chr_i_size,
+                                      var_df=sample_chr_va_df,
+                                      window=window,
+                                      step=step,
+                                      label=sample_i))
         all_stats_list.append(pd.concat(sample_df_list))
     stats_df = reduce(
         lambda x, y: pd.merge(
@@ -130,11 +115,8 @@ def va_density_compare(samples: str,
             on=[VaCountTable.CHROM, VaCountTable.START, VaCountTable.END]),
         all_stats_list,
     )
-    stats_file = va_density_compare_file(sample_list=sample_list,
-                                         min_depth=min_depth,
-                                         window=window,
-                                         step=step,
-                                         outdir=outdir)
+    out_path.mkdir(parents=True, exist_ok=True)
+    stats_file = out_path / "variant-density.csv"
     stats_df.to_csv(stats_file, index=False)
     stats_plot(stats_file)
 

@@ -49,20 +49,20 @@ p <- ggplot(m_var_density_df) +
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white"),
         axis.text.x = element_text(angle = 90, hjust =0, size=rel(0.75))) +
-  # scale_x_continuous(limits = c(0, max_chr_len * 10^8), 
-  #                    breaks = seq(0, max_chr_len * 10^8, 10^8),
-  #                    labels = c(0, paste0(seq(1, max_chr_len), "00M", sep = ""))) +
   scale_fill_gradientn(colours = cor_plot_col) +
   guides(fill=guide_colourbar(title='Log2(SNP) per 1Mb')) +
   xlab('') + ylab('') +
   coord_flip()+ scale_x_reverse() +
   scale_y_continuous(labels=sample_names, breaks = plot_label, position = 'right')
-p
 
+if (sample_num == 1) {
+    p <- p + theme(axis.text.x =  element_blank())
+}
 
 chrom_list <- as.character(unique(m_var_density_df$chrom))
 chrom_num <- length(chrom_list)
-p_width = 2 * chrom_num * sample_num / 7
+sample_num_scale = ifelse(sample_num < 2, 2, sample_num)
+p_width = 2 * chrom_num * sample_num_scale / 7
 ggsave(paste(out_prefix, 'png', sep='.'), 
        plot = p, width = p_width, height = 12,
        dpi = 300, type = "cairo")

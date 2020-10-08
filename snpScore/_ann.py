@@ -8,6 +8,7 @@ from datetime import datetime
 from pybedtools import BedTool
 from ._load import snpAnnTable, snpAnnTableByChr
 from ._score import snpAnnBox
+from ._utils import extract_snpeff_anno, split_dataframe_rows
 
 COL_HEADER_MAP = {'Chr': '#CHROM', 'Pos': 'POS', 'Alt': 'ALT'}
 
@@ -140,7 +141,24 @@ def snp_ann_pipe(gene_bed,
                             chr_size='')
 
     # step3 filter annotation
-    flat_target_snp_ann_df = snp_ann_obj.snp_window_ann_df.copy()
+    snpeff_ann_df = snp_ann_obj.snp_window_ann_df.copy()
+    snpeff_anno = list(snpeff_ann_df.INFO.map(extract_snpeff_anno))
+    snpeff_anno_df = pd.DataFrame(snpeff_anno)
+    snpeff_anno_df.columns = [
+        'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+        'Variant_Protein_Level'
+    ]
+    flat_target_snp_ann_df = pd.concat([snpeff_ann_df, snpeff_anno_df], axis=1)
+    flat_target_snp_ann_df.drop('INFO', axis=1, inplace=True)
+    flat_target_snp_ann_df = split_dataframe_rows(flat_target_snp_ann_df,
+                                                  column_selectors=[
+                                                      'Feature', 'Gene',
+                                                      'Transcript',
+                                                      'Variant_DNA_Level',
+                                                      'Variant_Protein_Level'
+                                                  ],
+                                                  row_delimiter='|')
+
     flat_target_snp_ann_df.drop(['Start', 'End'], axis=1, inplace=True)
     flat_target_snp_ann_df.fillna(0, inplace=True)
     order_cols = [
