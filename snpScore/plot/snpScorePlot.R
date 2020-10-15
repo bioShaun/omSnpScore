@@ -350,7 +350,7 @@ if (plot_type == 'density') {
                 axis.text.y = element_blank(),
                 axis.ticks = element_blank(),
                 panel.background = element_rect(fill = "white"),
-                plot.title = element_text(hjust = 0.5)
+                plot.title = element_text(hjust = 0.5, size=rel(.8))
                 ) +
         scale_x_continuous(limits = c(0, max_chr_len * 10^mega_base), 
                             breaks = seq(0, max_chr_len * 10^mega_base, 10^mega_base),

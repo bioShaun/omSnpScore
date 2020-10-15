@@ -39,6 +39,9 @@ setup(
         'scripts/snpScore-mp2-test',
         'scripts/snpScore-bychr-test',
         'scripts/varDensityCompare',
+        'scripts/snpFilter-cli',
+        'scripts/snpFilter-bychr',
+        'scripts/snpFilter-mp',
     ],
     install_requires=[
         'fire',

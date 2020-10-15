@@ -1,4 +1,5 @@
 # TODO: score system involve background and parent
+from functools import cached_property
 import os
 import attr
 import time
@@ -9,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from collections import OrderedDict
 from ._var import REF_FREQ, QTLSEQR_PLOT, QTLSEQR_PLOT_WEB
-from ._var import SnpGroup, MUT_NAME, WILD_NAME
+from ._var import SnpGroup, MUT_NAME, WILD_NAME, SnpGroupFreq
 from ._utils import freq_accordance
 from ._utils import alt_ref_cut
 from ._utils import filter_snp
@@ -19,6 +20,8 @@ from ._utils import cal_score, score_plot
 from ._utils import extract_snpeff_anno
 from ._utils import split_dataframe_rows
 from ._utils import valid_grp
+from ._utils import non_score_filter_snp
+from ._utils import has_parent
 
 
 @attr.s
@@ -282,6 +285,69 @@ class snpAnnBox(snpScoreBox):
                                                        self.target_bed,
                                                        self.outdir)
         return self._alt_freq_dis_df
+
+
+@attr.s
+class snpFilterBox:
+    alt_freq_df = attr.ib()
+    group = attr.ib()
+    outdir = attr.ib(converter=Path)
+    min_depth = attr.ib(default=5, converter=int)
+    mutant_freq = attr.ib(default=0.4, converter=float)
+    wild_freq = attr.ib(default=0.4, converter=float)
+    pat_mutant_freq = attr.ib(default=0, converter=float)
+    pat_wild_freq = attr.ib(default=0, converter=float)
+    afd = attr.ib(default=0.67, converter=float)
+    afd_deviation = attr.ib(default=0.05, converter=float)
+    parent_afd = attr.ib(default=1, converter=float)
+    parent_afd_deviation = attr.ib(default=0.05, converter=float)
+
+    @property
+    def hasParent(self):
+        return has_parent(self.group)
+
+    @property
+    def alt_filter_freq_file(self):
+        filename = (f'mut_{self.mutant_freq}-wild_{self.wild_freq}-'
+                    f'afd_{self.afd}-deviation_{self.afd_deviation}')
+        if self.hasParent:
+            parent_name = (
+                f'p_mut_{self.pat_mutant_freq}-p_wild_{self.pat_wild_freq}-'
+                f'p_afd_{self.parent_afd}-p_deviation_{self.parent_afd_deviation}'
+            )
+            filename = filename + '-' + parent_name
+        return self.outdir / f'{filename}.var.filter.csv'
+
+    @cached_property
+    def alt_filter_freq_df(self):
+        if self.alt_filter_freq_file.is_file():
+            return pd.read_csv(self.alt_filter_freq_file)
+        else:
+            logger.info('Filtering snp by freq...')
+            self.alt_freq_df.loc[:, 'AFD'] = self.alt_freq_df[
+                'mutant.FREQ'] - self.alt_freq_df['wild.FREQ']
+            filter_mask = non_score_filter_snp(self.alt_freq_df,
+                                               self.mutant_freq,
+                                               self.wild_freq,
+                                               self.afd,
+                                               self.afd_deviation,
+                                               isParent=False)
+            alt_filter_freq_df = self.alt_freq_df[filter_mask].copy()
+            if self.hasParent:
+                alt_filter_freq_df.loc[:, 'P_AFD'] = self.alt_freq_df[
+                    SnpGroupFreq.mut_pa.value] - self.alt_freq_df[
+                        SnpGroupFreq.wild_pa.value]
+                parent_mask = non_score_filter_snp(alt_filter_freq_df,
+                                                   self.pat_mutant_freq,
+                                                   self.pat_wild_freq,
+                                                   self.parent_afd,
+                                                   self.parent_afd_deviation,
+                                                   isParent=True)
+                direction_mask = alt_filter_freq_df.AFD * alt_filter_freq_df.P_AFD > 0
+                alt_filter_freq_df = alt_filter_freq_df[
+                    parent_mask & direction_mask].copy()
+            alt_filter_freq_df.to_csv(self.alt_filter_freq_file, index=False)
+            return alt_filter_freq_df
 
 
 @attr.s

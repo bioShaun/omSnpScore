@@ -22,6 +22,7 @@ from ._var import SNP_SCORE_PLOT, COLUMN_NAME_MAP, SNP_BASIC_COL, QTLSERQ_BASIC_
 from ._var import VAR_SCORE_OUT_COL, ANN_POS_COLS, SNP_DENSITY_POS_COLS, QTLSEQR_POS_COLS
 from ._var import SCIENTIFIC_NUMBER_COLS, ED_SPECIFIC_COLS, QTLSEQR_SPECIFIC_COLS
 from ._var import ANN_OUT_COLS, QTLSEQR_CHROM_NAME, SNP_DENSITY_SORT_COL, VAR_SCORE_SORT_COL, VAR_SCORE_ANN_SORT_COL
+from ._var import SnpDensityStatsTable, SnpTableConstants, VarFilterParams
 
 getcontext().prec = 3
 
@@ -487,6 +488,10 @@ def reformat_df(df: pd.DataFrame,
     sortby = SNP_DENSITY_SORT_COL
     if '.snp.freq.csv' in file_name:
         df = add_qtlserq_like_cols(df, SNP_BASIC_COL)
+    elif 'var.filter.csv' in file_name:
+        out_cols = SNP_BASIC_COL + ['INFO']
+        df = add_qtlserq_like_cols(df, out_cols)
+        df = flat_snpeff_ann(df, out_cols)
     elif '.var.score.ann.csv' in file_name:
         df = add_qtlserq_like_cols(df, VAR_SCORE_OUT_COL)
         sortby = VAR_SCORE_ANN_SORT_COL
@@ -512,7 +517,7 @@ def merge_split_file(file_dir,
                      input_sep=',',
                      out_header=True,
                      out_sep=','):
-    if 'qtlseqr' in file_pattern or 'snp.freq.csv' in file_pattern:
+    if 'qtlseqr' in file_pattern or 'snp.freq.csv' in file_pattern or 'var.filter.csv' in file_pattern:
         pattern_file = Path(file_dir).glob(f'split/*/fmt/{file_pattern}')
     else:
         pattern_file = Path(file_dir).glob(f'split/*/{file_pattern}')
@@ -528,7 +533,8 @@ def merge_split_file(file_dir,
     out_dir.mkdir(parents=True, exist_ok=True)
     outfile = Path(out_dir) / file_pattern
     df = pd.concat(df_list)
-    if not ('qtlseqr' in file_pattern or 'snp.freq.csv' in file_pattern):
+    if not ('qtlseqr' in file_pattern or 'snp.freq.csv' in file_pattern
+            or 'var.filter.csv' in file_pattern):
         df = reformat_df(df, file_pattern, chr_list=chr_list)
     else:
         df.sort_values(SNP_DENSITY_SORT_COL, inplace=True)
@@ -657,7 +663,14 @@ def circos_cfg(circos_prefix, circos_path: Path = None) -> Path:
 
 def add_default_params(param_obj: dict) -> dict:
     for name, member in VarScoreParams.__members__.items():
-        if not param_obj[name]:
+        if not param_obj.get(name):
+            param_obj[name] = member.value
+    return param_obj
+
+
+def add_filter_default_params(param_obj: dict) -> dict:
+    for name, member in VarFilterParams.__members__.items():
+        if not param_obj.get(name):
             param_obj[name] = member.value
     return param_obj
 
@@ -687,13 +700,20 @@ def save_params(param_obj: dict, cmd_history_dir: Path) -> None:
         json.dump(param_obj, json_inf)
 
 
-def params_cfg(cfg_file: Path, cfg_value: dict, cmd_history_dir: Path) -> None:
+def params_cfg(cfg_file: Path,
+               cfg_value: dict,
+               cmd_history_dir: Path,
+               cfg_type='varBscore') -> None:
     save_params(cfg_value, cmd_history_dir)
     cfg_value['report_time'] = now_str()
     cfg_dir = PurePath(__file__).parent / 'config'
     jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(
         searchpath=f'{cfg_dir}'))
-    cfg_temp = jinja_env.get_template('params.cfg')
+    if cfg_type == 'varBscore':
+        template_name = 'params.cfg'
+    else:
+        template_name = 'varFilter.params.cfg'
+    cfg_temp = jinja_env.get_template(template_name)
     cfg_obj = cfg_temp.render(cfg_value)
     with open(str(cfg_file), 'a') as file_inf:
         file_inf.write(cfg_obj)
@@ -714,6 +734,28 @@ def extract_qtlseqr_result(df: pd.DataFrame, selected_cols: List[str],
         df.to_csv(outFile, index=False, float_format='%.3f')
 
 
+def flat_snpeff_ann(df: pd.DataFrame, out_cols: List[str]) -> pd.DataFrame:
+    snpeff_anno = list(df.INFO.map(extract_snpeff_anno))
+    snpeff_anno_df = pd.DataFrame(snpeff_anno)
+    snpeff_anno_df.columns = [
+        'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
+        'Variant_Protein_Level'
+    ]
+    ann_df = pd.concat([df, snpeff_anno_df], axis=1)
+    ann_df.drop('INFO', axis=1, inplace=True)
+    ann_df = split_dataframe_rows(ann_df,
+                                  column_selectors=[
+                                      'Feature', 'Gene', 'Transcript',
+                                      'Variant_DNA_Level',
+                                      'Variant_Protein_Level'
+                                  ],
+                                  row_delimiter='|')
+    out_cols = out_cols + ANN_OUT_COLS
+    real_out_cols = valid_output_cols(out_cols, ann_df)
+    out_df = ann_df[real_out_cols]
+    return out_df
+
+
 def top_ranked_results(df: pd.DataFrame,
                        rank_col: str,
                        out_cols: List[str],
@@ -724,24 +766,8 @@ def top_ranked_results(df: pd.DataFrame,
                                  1 - select_rate)
         df = df[df[rank_col] >= top_cutoff]
         df.reset_index(drop=True, inplace=True)
-        snpeff_anno = list(df.INFO.map(extract_snpeff_anno))
-        snpeff_anno_df = pd.DataFrame(snpeff_anno)
-        snpeff_anno_df.columns = [
-            'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
-            'Variant_Protein_Level'
-        ]
-        ann_df = pd.concat([df, snpeff_anno_df], axis=1)
-        ann_df.drop('INFO', axis=1, inplace=True)
-        ann_df = split_dataframe_rows(ann_df,
-                                      column_selectors=[
-                                          'Feature', 'Gene', 'Transcript',
-                                          'Variant_DNA_Level',
-                                          'Variant_Protein_Level'
-                                      ],
-                                      row_delimiter='|')
-        out_cols = out_cols + ANN_OUT_COLS
-        out_df = ann_df[out_cols]
-        ann_df = sientific_number_col_to_str(ann_df)
+        out_df = flat_snpeff_ann(df, out_cols)
+        out_df = sientific_number_col_to_str(out_df)
         out_df.to_csv(out_file, index=False)
 
 
@@ -853,3 +879,100 @@ class CheckOutPutFunc:
 
 def check_output(outFile: Path):
     return functools.partial(CheckOutPutFunc, outFile)
+
+
+def filter_by_freq(df, column, freq):
+    return (df[column] <= freq) | (df[column] >= 1 - freq)
+
+
+def filter_by_afd(df, column, afd, deviation):
+    return (df[column].abs() >= afd - deviation) & (df[column].abs() <=
+                                                    afd + deviation)
+
+
+def non_score_filter_snp(alt_freq_df,
+                         mut_freq,
+                         wild_freq,
+                         afd,
+                         afd_deviation,
+                         isParent=False):
+    if not isParent:
+        mut_name = SnpGroupFreq.mut.value
+        wild_name = SnpGroupFreq.wild.value
+        afd_name = 'AFD'
+    else:
+        mut_name = SnpGroupFreq.mut_pa.value
+        wild_name = SnpGroupFreq.wild_pa.value
+        afd_name = 'P_AFD'
+    # filter mut freq
+    mut_freq_mask = filter_by_freq(alt_freq_df, mut_name, mut_freq)
+    # filter wild freq
+    wild_freq_mask = filter_by_freq(alt_freq_df, wild_name, wild_freq)
+    # filter by afd
+    afd_mask = filter_by_afd(alt_freq_df, afd_name, afd, afd_deviation)
+    return mut_freq_mask & wild_freq_mask & afd_mask
+
+
+def chrom_bin_snp_number_df(start: int, window: int, chr_len: int, chrom: str,
+                            df: pd.DataFrame) -> pd.DataFrame:
+    cut_range = range(start, chr_len + window, window)
+    range_count_df = pd.DataFrame(
+        pd.cut(df[SnpTableConstants.ANN_TABLE_COL[1]],
+               cut_range).value_counts().sort_index())
+    range_count_df.columns = [SnpDensityStatsTable.COUNT]
+    range_count_df.loc[:, SnpDensityStatsTable.CHROM] = chrom
+    range_count_df.loc[:, SnpDensityStatsTable.START] = [
+        each.left for each in range_count_df.index
+    ]
+    range_count_df.loc[:, SnpDensityStatsTable.END] = [
+        each.right for each in range_count_df.index
+    ]
+    return range_count_df[[
+        SnpDensityStatsTable.CHROM,
+        SnpDensityStatsTable.START,
+        SnpDensityStatsTable.END,
+        SnpDensityStatsTable.COUNT,
+    ]].reset_index(drop=True)
+
+
+def var_density_stats(
+    chr_size_file: Path,
+    ann_alt_freq_df: pd.DataFrame,
+    window: int = 1000 * 1000,
+    step: Optional[int] = None,
+) -> pd.DataFrame:
+    chr_size_df = pd.read_csv(chr_size_file,
+                              sep="\t",
+                              index_col=0,
+                              names=["chr_len"])
+    stats_df_list = []
+    ann_alt_freq_df.drop_duplicates(subset=SnpTableConstants.ANN_TABLE_COL[:2],
+                                    inplace=True)
+    for chrom, chrom_df in ann_alt_freq_df.groupby(
+        [SnpTableConstants.ANN_TABLE_COL[0]]):
+        chr_len = chr_size_df.loc[chrom, "chr_len"]
+        if step is None:
+            step = window
+        for start in range(0, window, step):
+            stats_df_i = chrom_bin_snp_number_df(
+                start=start,
+                chr_len=chr_len,
+                window=window,
+                chrom=str(chrom),
+                df=chrom_df,
+            )
+            stats_df_list.append(stats_df_i)
+    return pd.concat(stats_df_list)
+
+
+def var_density_file_suffix(window: int, step: Optional[int]):
+    window_str = window_number_format(window)
+    if step:
+        step_str = window_number_format(step)
+        return f".window{window_str}_step{step_str}.density.csv"
+    else:
+        return f".window{window_str}.density.csv"
+
+
+def has_parent(group: List[str]) -> bool:
+    return SnpGroup.mut_pa.value in group

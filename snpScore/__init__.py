@@ -40,3 +40,8 @@ from ._var import VarScoreDocName
 from ._var import SNP_DENSITY_POS_COLS
 from ._var import QTLSEQR_POS_COLS
 from ._var import VAR_DENSITY_PLOT
+from ._score import snpFilterBox
+from ._utils import var_density_stats
+from ._utils import var_density_file_suffix
+from ._utils import add_filter_default_params
+from ._utils import has_parent

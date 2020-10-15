@@ -33,6 +33,17 @@ class VarScoreParams(IntEnum):
     qtlseqr_min_depth = 5
 
 
+class VarFilterParams(Enum):
+    min_depth = 5
+    mut_freq = 0.4
+    wild_freq = 0.4
+    p_mut_freq = 0
+    p_wild_freq = 0
+    afd_deviation = 0.05
+    p_afd = 1
+    p_afd_deviation = 0.05
+
+
 script_dir = Path(__file__).parent
 
 SNP_SCORE_PLOT = script_dir / 'plot/snpScorePlot.R'
@@ -66,6 +77,7 @@ COLUMN_NAME_MAP = {
     'Chrom': 'CHROM',
     'Pos': 'POS',
     'Alt': 'ALT',
+    'P_AFD': 'PARENT_AFD',
     'snp_score': 'varBScore',
     'mutant.FREQ': 'mutant.AF',
     'wild.FREQ': 'wild.AF',
@@ -84,8 +96,9 @@ COLUMN_NAME_MAP = {
 
 SNP_BASIC_COL = [
     'CHROM', 'POS', 'REF', 'ALT', 'wild.AF', 'mutant.AF', 'wild_parent.AF',
-    'mutant_parent.AF', 'background.AF', 'AFD(deltaSNP)', 'REF_FRQ', 'wild.DP',
-    'mutant.DP', 'wild_parent.DP', 'mutant_parent.DP', 'background.DP'
+    'mutant_parent.AF', 'background.AF', 'AFD(deltaSNP)', 'PARENT_AFD',
+    'REF_FRQ', 'wild.DP', 'mutant.DP', 'wild_parent.DP', 'mutant_parent.DP',
+    'background.DP'
 ]
 
 QTLSERQ_BASIC_COL = [
@@ -141,3 +154,14 @@ class VarScoreDocName(Enum):
     ed = DOC_DIR / 'ed.readme.txt'
     qtlseqr = DOC_DIR / 'qtlseqr.readme.txt'
     circos = DOC_DIR / 'circos.readme.txt'
+
+
+class SnpTableConstants:
+    ANN_TABLE_COL = ["CHROM", "POS", "REF", "ALT", "INFO"]
+
+
+class SnpDensityStatsTable:
+    CHROM = "chrom"
+    START = "start"
+    END = "end"
+    COUNT = "variantCount"

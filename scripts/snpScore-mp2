@@ -101,11 +101,11 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     plot_cmd = []
 
     # varBScore
-    varBScore_dir = results_dir / VarScoreOutDirName.var_score.value
-    snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
-    snp_score_file = merge_split_file(results_dir,
-                                      snp_score_file_pattern,
-                                      out_dir=varBScore_dir)
+    var_filter_dir = results_dir / VarScoreOutDirName.var_score.value
+    var_filter_file_pattern = snpscore_obj.alt_filter_freq_file.name
+    var_filter_file = merge_split_file(results_dir,
+                                       var_filter_file_pattern,
+                                       out_dir=var_filter_dir)
     plot_cmd.append(
         score_plot(snp_score_file, 'var', snp_score_file.stem, chr_size,
                    'web'))
