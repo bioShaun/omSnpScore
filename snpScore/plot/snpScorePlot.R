@@ -362,9 +362,9 @@ if (plot_type == 'density') {
 
     chrom_num <- length(chrom_list)
     p_height = 2 * chrom_num / 7
-    ggsave(paste(output_prefix, 'png', sep='.'), 
+    ggsave(paste(output_prefix, 'jpg', sep='.'), 
     plot = p, width = 10, height = p_height,
-    dpi = 300, type = "cairo")
+    dpi = 300)
     if ( ! is_web ) {
         ggsave(paste(output_prefix, 'pdf', sep='.'), 
         plot = p, width = 10, height = p_height)    

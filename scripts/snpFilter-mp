@@ -62,9 +62,6 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
     full_outdir = outdir / outdir_suffix
     results_dir = full_outdir / 'results'
     cmd_history_dir = results_dir / 'history'
-    if not is_new_cmd(input_params, cmd_history_dir):
-        print(full_outdir)
-        return
 
     for chr_i in chr_size_df.index:
         param_wrap_arg = wrap_param_arg(sys.argv[1:])
@@ -116,19 +113,21 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
     plot_cmds.append(
         score_plot(var_filter_density_file, 'density-new',
                    var_filter_density_file.stem, chr_size))
+    plot_cmds = list(filter(None, plot_cmds))
     if plot_cmds:
         logger.info('Launch plot jobs...')
         async_batch_sh_jobs(plot_cmds, thread=thread)
 
     # write params config
-    params_cfg_file = var_filter_dir / 'parameters.txt'
-    params_cfg(params_cfg_file,
-               input_params,
-               cmd_history_dir,
-               cfg_type='varFilter')
+    if is_new_cmd(input_params, cmd_history_dir):
+        params_cfg_file = var_filter_dir / 'parameters.txt'
+        params_cfg(params_cfg_file,
+                   input_params,
+                   cmd_history_dir,
+                   cfg_type='varFilter')
 
     logger.info('Fin.')
-    print(full_outdir)
+    print(var_filter_density_file.with_suffix('.plot.jpg'))
 
 
 if __name__ == '__main__':
