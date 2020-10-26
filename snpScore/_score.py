@@ -1,5 +1,6 @@
 # TODO: score system involve background and parent
-from functools import cached_property
+# cached_property from py3.8
+# from functools import cached_property
 import os
 import attr
 import time
@@ -318,7 +319,7 @@ class snpFilterBox:
             filename = filename + '-' + parent_name
         return self.outdir / f'{filename}.var.filter.csv'
 
-    @cached_property
+    @property
     def alt_filter_freq_df(self):
         if self.alt_filter_freq_file.is_file():
             return pd.read_csv(self.alt_filter_freq_file)

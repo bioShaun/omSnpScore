@@ -102,7 +102,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
 
     # varBScore
     varBScore_dir = results_dir / VarScoreOutDirName.var_score.value
-    snp_score_file_pattern = snpscore_obj.alt_filter_freq_file.name
+    snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
     snp_score_file = merge_split_file(results_dir,
                                       snp_score_file_pattern,
                                       out_dir=varBScore_dir)

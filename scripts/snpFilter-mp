@@ -44,7 +44,7 @@ BY_CHR_BIN = "snpFilter-bychr"
 @click.option('-t',
               '--thread',
               help='paralle number',
-              default=4,
+              default=8,
               type=click.INT)
 def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
 
