@@ -163,6 +163,7 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
                              filter_dp_grp=filter_grp)
 
     snpFilter_obj = snpFilterBox(alt_freq_df=snp_table_obj.alt_freq_df,
+                                 group=group_list,
                                  outdir=outdir,
                                  min_depth=min_depth,
                                  mutant_freq=mut_freq,
