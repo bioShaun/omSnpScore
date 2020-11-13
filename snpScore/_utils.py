@@ -338,10 +338,7 @@ def score_plot(score_file,
         out_prefix = out_plot
     elif method in ['snpIndex', 'Gprime']:
         out_prefix = score_file.parent / plot_title
-        if method == 'Gprime':
-            out_plot = score_file.with_suffix(f'.{method}.plot.jpg')
-        else:
-            out_plot = score_file.with_suffix(f'.{method}.plot.png')
+        out_plot = score_file.with_suffix(f'.{method}.plot.jpg')
     else:
         raise UnsupportedPlot(method)
     cmd = (f'Rscript {SNP_SCORE_PLOT} '
@@ -499,6 +496,7 @@ def reformat_df(df: pd.DataFrame,
         df.rename(columns=COLUMN_NAME_MAP, inplace=True)
         sortby = VAR_SCORE_SORT_COL
     elif '.snp.plot.bed' in file_name:
+        df.loc[:, 0] = df[0].astype('str')   
         sortby = [0, 1]
     else:
         pass
@@ -719,9 +717,14 @@ def params_cfg(cfg_file: Path,
         file_inf.write(cfg_obj)
 
 
-def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix):
-    circos_sh = PurePath(__file__).parent / 'plot' / 'data2circos.sh'
-    cmd = f'sh {circos_sh} {varScore_csv} {qtlseqr_ed_csv} {snp_freq_csv} {out_prefix}'
+def circos_plot(varScore_csv, qtlseqr_ed_csv, snp_freq_csv, out_prefix, window_file=None):
+    if window_file:
+        circos_sh = PurePath(__file__).parent / 'plot' / 'data2circos-plant.sh'
+        cmd = f'sh {circos_sh} {varScore_csv} {qtlseqr_ed_csv} {snp_freq_csv} {window_file} {out_prefix}'
+        print(cmd)
+    else:
+        circos_sh = PurePath(__file__).parent / 'plot' / 'data2circos.sh'
+        cmd = f'sh {circos_sh} {varScore_csv} {qtlseqr_ed_csv} {snp_freq_csv} {out_prefix}'
     return cmd
 
 

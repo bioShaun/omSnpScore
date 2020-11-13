@@ -42,16 +42,25 @@ from snpScore import snpFilterBox
               help='results directory.',
               required=True,
               type=click.STRING)
-def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
+@click.option('-t',
+              '--thread',
+              help='paralle number',
+              default=4,
+              type=click.INT)                
+@click.option('--plant', help='for general plant', is_flag=True)                     
+def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom, plant, thread):
     parameters_obj = json.loads(parameters)
     sample_list, group_list = sample_and_group_for_web(parameters_obj)
     filter_grp = list(set(group_list))
 
     outdir = Path(outdir)
-    outdir_suffix = outdir_suffix_from_params(parameters_obj)
-    outdir = outdir.resolve()
-    full_outdir = outdir / outdir_suffix
-    results_dir = full_outdir / f'results/split/{chrom}'
+    if plant:
+        full_outdir = outdir
+    else:    
+        outdir_suffix = outdir_suffix_from_params(parameters_obj)
+        outdir = outdir.resolve()
+        full_outdir = outdir / outdir_suffix
+    results_dir = full_outdir / f'analysis/split/{chrom}'
 
     input_params = dict()
     for param_i in parameters_obj:

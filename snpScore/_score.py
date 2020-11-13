@@ -165,6 +165,9 @@ class snpScoreBox:
             self._alt_freq_dis_df = snp_freq_by_window(
                 self.alt_filter_freq_df, self.group_label,
                 self.snp_number_window_file, self.outdir)
+            self._alt_freq_dis_df.loc[:,
+                                 'Chrom'] = self._alt_freq_dis_df['Chrom'].astype(
+                                     'str')                
         return self._alt_freq_dis_df
 
     @property
@@ -222,6 +225,9 @@ class snpScoreBox:
         # ann_score_df = self.score_df.sort_values(['snp_score'],
         #                                          ascending=False)
         #ann_score_df = ann_score_df[:100]
+        self.score_df = self.score_df.reset_index()
+        self.score_df.loc[:,'Chrom'] = self.score_df['Chrom'].astype(
+                                     'str')           
         self._score_ann_df = self.score_df.merge(
             self.snp_window_ann_df,
             left_on=['Chrom', 'Start', 'End'],

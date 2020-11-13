@@ -17,7 +17,7 @@ out_prefix <- argv$out_prefix
 # var_density_file <- './TCE000007.K1-1_TCE000008.R1-1-depth_1-window_1.0M.csv'
 # out_prefix <- 'test-plot'
 
-var_density_df <- read.csv(var_density_file)
+var_density_df <- read.csv(var_density_file, check.names=F)
 max_chr_len = ceiling(max(var_density_df$end)/(10^8))
 
 var_cols = colnames(var_density_df)

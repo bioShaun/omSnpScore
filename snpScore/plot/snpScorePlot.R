@@ -9,7 +9,6 @@ suppressMessages(library(scales))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(argparser))
 suppressMessages(library(gridExtra))
-suppressMessages(library(omplotr))
 
 
 options(stringsAsFactors = F)
@@ -129,7 +128,7 @@ qtlseqr_data <- function(field) {
     if (!(is.na(chr.size))) {
         chr.size.df <- read.delim(chr.size, header=F, col.names=c('CHROM', 'POS'))
         chr.size.df$SNP <- paste(chr.size.df$CHROM, chr.size.df$POS, sep = ':')
-        chr.size.df[, field] <- 0
+        chr.size.df[, field] <- NA
         chr.size.df <- chr.size.df[, c('SNP', 'CHROM', 'POS', field)]
         plot_data <- rbind(plot_data, chr.size.df)
         plot_data <- arrange(plot_data, CHROM, POS)
@@ -202,7 +201,7 @@ qtlseqr_snp_index_plot <- function() {
       p <- p + facet_wrap(.~CHROM, scales = "free_x")
     }
     output_prefix = paste(output_prefix, 'snpIndex.plot', sep='.')
-    ggsave(filename = paste(output_prefix, 'png', sep = '.'), plot=p, width = plot_width, height = plot_height)
+    ggsave(filename = paste(output_prefix, 'jpg', sep = '.'), plot=p, width = plot_width, height = plot_height)
     if (! is_web) {
         ggsave(filename = paste(output_prefix, 'pdf', sep = '.'), plot=p, width = plot_width, height = plot_height)
     }
@@ -307,7 +306,7 @@ if (plot_type == 'density') {
   if (!(is.na(chr.size))) {
     chr.size.df <- read.delim(chr.size, header=F, col.names=c('CHROM', 'Start'))
     chr.size.df$SNP <- paste(chr.size.df$CHROM, chr.size.df$Start, sep = ':')
-    chr.size.df$varBScore <- 1
+    chr.size.df$varBScore <- NA
     chr.size.df <- chr.size.df[, c('SNP', 'CHROM', 'Start', 'varBScore')]
     plot_data <- rbind(plot_data, chr.size.df)
     plot_data <- arrange(plot_data, CHROM, Start)

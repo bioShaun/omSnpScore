@@ -3,6 +3,7 @@
 import sys
 import json
 import click
+import delegator
 import pandas as pd
 from loguru import logger
 from pathlib import Path
@@ -13,7 +14,7 @@ from snpScore import outdir_suffix_from_params
 from snpScore import merge_split_file, score_plot, wrap_param_arg
 from snpScore import circos_suffix, circos_cfg, circos_plot
 from snpScore import split_qtlseqr_results, snp_density_stats
-from snpScore import add_default_params, params_cfg, is_new_cmd, cp_if_not_exist
+from snpScore import add_default_params, params_cfg, is_new_cmd, cp_if_not_exist, make_chr_window
 from snpScore import VarScoreOutDirName
 from snpScore import VarScoreDocName
 
@@ -50,7 +51,8 @@ BY_CHR_BIN = "snpScore-bychr"
               default=4,
               type=click.INT)
 @click.option('--circos', help='generate circos plot', is_flag=True)
-def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
+@click.option('--plant', help='for general plant', is_flag=True)
+def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos, plant):
 
     chr_size_df = pd.read_csv(chr_size, sep='\t', header=None, index_col=0)
     cmd_list = []
@@ -61,11 +63,15 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     input_params = add_default_params(parameters_obj)
 
     outdir = Path(outdir)
-    outdir_suffix = outdir_suffix_from_params(parameters_obj)
     outdir = outdir.resolve()
-    full_outdir = outdir / outdir_suffix
-    results_dir = full_outdir / 'results'
+    if plant:
+        full_outdir = outdir
+    else:
+        outdir_suffix = outdir_suffix_from_params(parameters_obj)
+        full_outdir = outdir / outdir_suffix
+    results_dir = full_outdir / 'analysis'
     cmd_history_dir = results_dir / 'history'
+    download_dir = full_outdir / 'varBscore-results'
     if not is_new_cmd(input_params, cmd_history_dir):
         print(full_outdir)
         return
@@ -101,7 +107,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     plot_cmd = []
 
     # varBScore
-    varBScore_dir = results_dir / VarScoreOutDirName.var_score.value
+    varBScore_dir = download_dir / VarScoreOutDirName.var_score.value
     snp_score_file_pattern = f'{snpscore_obj.score_prefix}.var.score.csv'
     snp_score_file = merge_split_file(results_dir,
                                       snp_score_file_pattern,
@@ -115,7 +121,7 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                                           out_dir=varBScore_dir)
 
     # SNP DENSITY
-    snp_freq_dir = results_dir / VarScoreOutDirName.snp_density.value
+    snp_freq_dir = download_dir / VarScoreOutDirName.snp_density.value
     snp_freq_file = merge_split_file(
         results_dir,
         f"{snpscore_obj.group_label}.snp.freq.csv",
@@ -130,7 +136,15 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                                     out_sep='\t')
 
     snp_freq_stats = snp_freq_file.with_suffix('.stats.csv')
-    snp_density_stats(CHR_WINDOW, snp_freq_bed, snp_freq_stats)
+    if plant:
+        snp_density_window = input_params.get('snp_density_window')
+        snp_density_step = input_params.get('snp_density_step')    
+        chr_window = make_chr_window(chr_size, snp_density_window,
+                                    snp_density_step, results_dir)
+    else:
+        chr_window = CHR_WINDOW
+
+    snp_density_stats(chr_window, snp_freq_bed, snp_freq_stats)
     plot_cmd.append(
         score_plot(snp_freq_stats, 'density-new', snp_freq_stats.stem,
                    chr_size, 'web'))
@@ -146,9 +160,9 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
                           run_ed=input_params.get('ed'),
                           web=True)
     qtlseqr_file = merge_split_file(results_dir, qtlseqr_obj.filePath.name)
-    qtlSeqrDir = results_dir / VarScoreOutDirName.qtlseqr.value
+    qtlSeqrDir = download_dir / VarScoreOutDirName.qtlseqr.value
     qtlSeqrDir.mkdir(parents=True, exist_ok=True)
-    edDir = results_dir / VarScoreOutDirName.ed.value
+    edDir = download_dir / VarScoreOutDirName.ed.value
     edDir.mkdir(parents=True, exist_ok=True)
 
     qtlSeqrDirFile = qtlSeqrDir / qtlseqr_obj.qtlseqrFileName
@@ -166,14 +180,14 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
         circos_name = circos_suffix(snpscore_obj.score_prefix,
                                     qtlseqr_obj.filePath.stem)
         circos_dir = results_dir / 'circos_data' / circos_name
-        circos_outdir = results_dir / VarScoreOutDirName.circos.value
+        circos_outdir = download_dir / VarScoreOutDirName.circos.value
         circos_outdir.mkdir(parents=True, exist_ok=True)
         cp_if_not_exist(VarScoreDocName.circos.value, circos_outdir)
         circos_plot_path = circos_cfg(circos_dir, circos_path=circos_outdir)
-        if not circos_plot_path.is_file():
+        if not circos_plot_path.is_file(): 
             plot_cmd.append(
                 circos_plot(snp_score_file, qtlseqr_file, snp_freq_file,
-                            circos_dir))
+                            circos_dir))                
     plot_cmd = list(filter(None, plot_cmd))
     async_batch_sh_jobs(plot_cmd, thread=thread)
 
@@ -184,9 +198,13 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, circos):
     cp_if_not_exist(VarScoreDocName.ed.value, edDir)
 
     # write params config
-    params_cfg_file = results_dir / 'parameters.txt'
+    params_cfg_file = download_dir / 'parameters.txt'
     params_cfg(params_cfg_file, input_params, cmd_history_dir)
 
+    # compress results
+    if plant:
+        zip_cmd = f'cd {outdir}; zip -r {download_dir.name}.zip {download_dir.name}'
+        delegator.run(zip_cmd)
     logger.info('Fin.')
     print(full_outdir)
 

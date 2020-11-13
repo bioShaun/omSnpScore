@@ -304,6 +304,7 @@ def main(vcf_file, vcf_table, vcf_dir, mutant, wild, outdir, thread,
             plot_cmds.append(
                 score_plot(edFile, 'ED', edFile.stem, chr_size, 'web'))
     plot_cmds = list(filter(None, plot_cmds))
+    print(plot_cmds)
     if plot_cmds:
         logger.info('Launch plot jobs...')
         async_batch_sh_jobs(plot_cmds, thread=thread)

@@ -27,14 +27,18 @@ class SnpRep(IntEnum):
 
 
 class VarScoreParams(Enum):
-    snp_number_step = 5
-    snp_number_window = 20
     min_depth = 5
-    qtlseqr_min_depth = 5
+    snp_number_window = 20
+    snp_number_step = 5
     ref_freq = 0.3
     p_ref_freq = 0.3
-    qtlseqr_ref_freq = 0.3
     background_ref_freq = 0.3
+    qtlseqr_window = 10_000_000
+    qtlseqr_ref_freq = 0.3
+    pop_stru = 'RIL'
+    qtlseqr_min_depth = 5
+    snp_density_window = 1_000_000
+    snp_density_step = 0
 
 
 class VarFilterParams(Enum):

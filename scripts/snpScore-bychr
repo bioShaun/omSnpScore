@@ -42,16 +42,25 @@ from snpScore import freq2qtlseqr, format_outfile, QTLSEQR_POS_COLS
               help='results directory.',
               required=True,
               type=click.STRING)
-def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom):
+@click.option('-t',
+              '--thread',
+              help='paralle number',
+              default=4,
+              type=click.INT)     
+@click.option('--plant', help='for general plant', is_flag=True)                          
+def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom, thread, plant):
     parameters_obj = json.loads(parameters)
     input_params = add_default_params(parameters_obj)
     sample_list, group_list = sample_and_group_for_web(parameters_obj)
 
     outdir = Path(outdir)
-    outdir_suffix = outdir_suffix_from_params(parameters_obj)
-    outdir = outdir.resolve()
-    full_outdir = outdir / outdir_suffix
-    results_dir = full_outdir / f'results/split/{chrom}'
+    if plant:
+        full_outdir = outdir
+    else:    
+        outdir_suffix = outdir_suffix_from_params(parameters_obj)
+        outdir = outdir.resolve()
+        full_outdir = outdir / outdir_suffix
+    results_dir = full_outdir / f'analysis/split/{chrom}'
 
     snp_table_obj = snpTableMP(out_dir=results_dir,
                                table_dirs=vcf_dir,

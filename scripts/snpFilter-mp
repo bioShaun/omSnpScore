@@ -3,6 +3,7 @@
 import sys
 import json
 import click
+import delegator
 import pandas as pd
 from loguru import logger
 from pathlib import Path
@@ -46,7 +47,8 @@ BY_CHR_BIN = "snpFilter-bychr"
               help='paralle number',
               default=8,
               type=click.INT)
-def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
+@click.option('--plant', help='for general plant', is_flag=True)
+def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread, plant):
 
     chr_size_df = pd.read_csv(chr_size, sep='\t', header=None, index_col=0)
     cmd_list = []
@@ -57,10 +59,14 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
     input_params = add_filter_default_params(parameters_obj)
 
     outdir = Path(outdir)
-    outdir_suffix = outdir_suffix_from_params(parameters_obj)
     outdir = outdir.resolve()
-    full_outdir = outdir / outdir_suffix
-    results_dir = full_outdir / 'results'
+    if plant:
+        full_outdir = outdir
+    else:
+        outdir_suffix = outdir_suffix_from_params(parameters_obj)
+        full_outdir = outdir / outdir_suffix
+
+    results_dir = full_outdir / 'analysis'
     cmd_history_dir = results_dir / 'history'
 
     for chr_i in chr_size_df.index:
@@ -91,24 +97,29 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
     plot_cmds = []
 
     # varBScore
-    var_filter_dir = results_dir / 'variantFilter'
+    var_filter_dir = outdir / 'variantFilter'
     var_filter_file_pattern = snpFilter_obj.alt_filter_freq_file.name
     var_filter_file = merge_split_file(results_dir,
                                        var_filter_file_pattern,
                                        out_dir=var_filter_dir)
 
     var_filter_df = pd.read_csv(var_filter_file)
-    snp_density_step = None
     snp_density_window = input_params.get('snp_density_window', 1000_000)
+    snp_density_step = input_params.get('snp_density_step', None)
     var_filter_density_df = var_density_stats(
         chr_size,
         var_filter_df,
         window=snp_density_window,
         step=snp_density_step,
     )
-    var_filter_density_suffix = var_density_file_suffix(
-        snp_density_window, snp_density_step)
-    var_filter_density_file = var_filter_dir / f'{var_filter_file.stem}{var_filter_density_suffix}'
+
+
+    if plant:
+        var_filter_density_file = var_filter_dir / 'var.filter.density.csv'
+    else:
+        var_filter_density_suffix = var_density_file_suffix(
+        snp_density_window, snp_density_step)        
+        var_filter_density_file = var_filter_dir / f'{var_filter_file.stem}{var_filter_density_suffix}'
     var_filter_density_df.to_csv(var_filter_density_file, index=False)
     plot_cmds.append(
         score_plot(var_filter_density_file, 'density-new',
@@ -119,13 +130,17 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, thread):
         async_batch_sh_jobs(plot_cmds, thread=thread)
 
     # write params config
-    if is_new_cmd(input_params, cmd_history_dir):
-        params_cfg_file = var_filter_dir / 'parameters.txt'
-        params_cfg(params_cfg_file,
-                   input_params,
-                   cmd_history_dir,
-                   cfg_type='varFilter')
+    if not plant:
+        if is_new_cmd(input_params, cmd_history_dir):
+            params_cfg_file = var_filter_dir / 'parameters.txt'
+            params_cfg(params_cfg_file,
+                    input_params,
+                    cmd_history_dir,
+                    cfg_type='varFilter')
 
+    if plant:
+        zip_cmd = f'cd {outdir}; zip -r {var_filter_dir.name}.zip {var_filter_dir.name}'
+        delegator.run(zip_cmd)        
     logger.info('Fin.')
     print(var_filter_density_file.with_suffix('.plot.jpg'))
 

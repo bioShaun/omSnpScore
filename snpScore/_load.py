@@ -19,6 +19,8 @@ class tableFromVcf:
     vcf = attr.ib(converter=Path)
     out_dir = attr.ib(converter=Path)
     thread = attr.ib(default=1, converter=int)
+    sample_prefix = attr.ib(default=None)
+    out_format = attr.ib(default='pkl')
 
     @property
     def vcf_samples(self):
@@ -36,7 +38,10 @@ class tableFromVcf:
     def samples(self):
         table_samples = []
         for sp_i in self.vcf_samples:
-            sp_i_pkl = self.out_dir / f'{sp_i}.pkl'
+            name = sp_i
+            if self.sample_prefix:
+                name = f'{self.sample_prefix}-{sp_i}'
+            sp_i_pkl = self.out_dir / f'{name}.pkl'
             if sp_i_pkl.is_file():
                 logger.warning(f'{sp_i_pkl} exsits, omit sample [{sp_i}].')
             else:
@@ -46,9 +51,17 @@ class tableFromVcf:
     def _extract_from_vcf(self, sample_id):
         check_app('bcftools')
         check_app('table2pkl')
+        name = sample_id
+        if self.sample_prefix:
+            name = f'{self.sample_prefix}-{sample_id}'
         cmd = (f'bcftools view --samples {sample_id} {self.vcf} | '
                f'table2pkl from_stdin --sample_id {sample_id} '
-               f'--table-file-pkl {self.out_dir}/{sample_id}.pkl')
+               f'--table-file-pkl {self.out_dir}/{name}.pkl')
+        if self.out_format == 'csv':
+            check_app('table2csv-mp')
+            cmd = (f'bcftools view --samples {sample_id} {self.vcf} | '
+               f'table2csv-mp from_stdin --sample_id {sample_id} '
+               f'--csv-dir {self.out_dir}/{name}')
         return cmd
 
     @property
@@ -58,6 +71,7 @@ class tableFromVcf:
         cmd_list = [self._extract_from_vcf(sp_i) for sp_i in self.samples]
         async_batch_sh_jobs(cmd_list, self.thread)
         logger.info('Extracting sample vcf done.')
+
 
 
 @attr.s

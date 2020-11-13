@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from random import sample
 import fire
 import delegator
 import pandas as pd
@@ -75,44 +74,40 @@ def va_density_compare(samples: str,
                        va_dir: str,
                        chr_size: str,
                        outdir: str,
-                       min_depth: int = 0,
+                       min_depth: int = 1,
                        min_alt_freq: float = 0,
                        window: int = 1000_000,
-                       step: Optional[int] = None,
-                       plant=False):
+                       step: Optional[int] = None):
     out_path = Path(outdir)
     if out_path.is_dir():
         return
     sample_list = samples.split(',')
     chr_df = pd.read_csv(chr_size, sep='\t', index_col=0, names=['chr_len'])
+    chr_df.index = 
     va_path = Path(va_dir)
     all_stats_list = []
     for sample_i in sample_list:
+        sample_i_file = va_path /  "{sample_i}.pkl"
+        sample_i_df = pd.read_pickle(sample_i_file)
+        sample_i_df.columns = sample_i_df.columns.droplevel(1).reset_index()
         sample_df_list = []
-        for chr_i in chr_df.index:
+        for chr_i, sample_chr_va_df in sample_i_df.groupby:
             chr_i_size = chr_df.loc[chr_i, 'chr_len']
-            sample_chr_va_file = va_path / sample_i / f"{chr_i}.csv"
-            if sample_chr_va_file.is_file():
-                sample_chr_va_df = pd.read_csv(sample_chr_va_file)
-                sample_chr_va_df.loc[:,
-                                     'depth'] = sample_chr_va_df.ref_count + sample_chr_va_df.alt_count
-                sample_chr_va_df = sample_chr_va_df[
-                    sample_chr_va_df.depth > min_depth]
-                sample_chr_va_df.loc[:,
-                                     'alt_freq'] = sample_chr_va_df.alt_count / sample_chr_va_df.depth
-                sample_chr_va_df = sample_chr_va_df[
-                    sample_chr_va_df.alt_freq > min_alt_freq]
-                if plant:
-                    sample_label = '-'.join(sample_i.split('-')[1:])
-                else:
-                    sample_label = sample_i
-                sample_df_list.append(
-                    var_density_stats(chrom=str(chr_i),
-                                      chr_size=chr_i_size,
-                                      var_df=sample_chr_va_df,
-                                      window=window,
-                                      step=step,
-                                      label=sample_label))
+            sample_chr_va_df.loc[:,
+                                    'depth'] = sample_chr_va_df.ref_count + sample_chr_va_df.alt_count
+            sample_chr_va_df = sample_chr_va_df[
+                sample_chr_va_df.depth >= min_depth]
+            sample_chr_va_df.loc[:,
+                                    'alt_freq'] = sample_chr_va_df.alt_count / sample_chr_va_df.depth
+            sample_chr_va_df = sample_chr_va_df[
+                sample_chr_va_df.alt_freq > min_alt_freq]
+            sample_df_list.append(
+                var_density_stats(chrom=str(chr_i),
+                                    chr_size=chr_i_size,
+                                    var_df=sample_chr_va_df,
+                                    window=window,
+                                    step=step,
+                                    label=sample_i))
         all_stats_list.append(pd.concat(sample_df_list))
     stats_df = reduce(
         lambda x, y: pd.merge(
@@ -125,8 +120,6 @@ def va_density_compare(samples: str,
     stats_file = out_path / "variant-density.csv"
     stats_df.to_csv(stats_file, index=False)
     stats_plot(stats_file)
-    zip_cmd = f'cd {out_path}; zip -r varDensity.zip ./*'
-    delegator.run(zip_cmd)
 
 
 if __name__ == "__main__":

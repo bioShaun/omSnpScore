@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+
+import json
+import click
+import pandas as pd
+import delegator
+from loguru import logger
+from pathlib import Path
+from snpScore import tableFromVcf, sample_and_group
+from snpScore import tableFromSelectTable
+from snpScore import snpTable, async_batch_sh_jobs
+from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
+from snpScore import freq2qtlseqr
+from snpScore import score_plot
+from snpScore import cp_files
+from snpScore import split_qtlseqr_results, snp_density_stats
+from snpScore import VarScoreDocName, VarScoreOutDirName
+from snpScore import format_outfile, make_chr_window
+from snpScore import window_number_format, add_snp_ann, check_output
+from snpScore import SNP_DENSITY_POS_COLS, add_default_params, sample_and_group_for_web
+
+
+@click.command()
+@click.option('-p',
+              '--parameters',
+              help='snpScore parameters json string.',
+              required=True,
+              type=click.STRING)
+@click.option('-d',
+              '--vcf_dir',
+              help=('vcf table directory, can be more than one '
+                    '[--vcf_dir dir1 --vcf_dir dir2].'),
+              type=click.Path(exists=True, file_okay=False),
+              multiple=True)
+@click.option('--vcf_ann_file',
+              help='snp annotation file.',
+              required=True,
+              type=click.Path(exists=True, dir_okay=False))
+@click.option('--chr_size',
+              help='chr size file, default is chr size of bread wheat.',
+              type=click.Path(exists=True, dir_okay=False),
+              default=CHR_SIZE)
+@click.option('-o',
+              '--outdir',
+              help='results directory.',
+              required=True,
+              type=click.Path())
+@click.option('-t',
+              '--thread',
+              help='paralle number',
+              default=4,
+              type=click.INT)              
+def main(parameters, vcf_dir, vcf_ann_file, chr_size, outdir, thread):
+    parameters_obj = json.loads(parameters)
+    input_params = add_default_params(parameters_obj)
+    sample_list, group_list = sample_and_group_for_web(parameters_obj)
+
+    snp_score_methods = ['var']
+
+    snp_table_obj = snpTable(out_dir=outdir,
+                             table_dirs=vcf_dir,
+                             samples=sample_list,
+                             sample_label=group_list,
+                             min_depth=input_params.get('min_depth'))
+
+    snpscore_obj = snpScoreBox(alt_freq_df=snp_table_obj.alt_freq_df,
+                               grp_list=group_list,
+                               method_list=snp_score_methods,
+                               outdir=outdir,
+                               chr_size=chr_size,
+                               min_depth=input_params.get('min_depth'),
+                               snp_number_window=input_params.get('snp_number_window'),
+                               snp_number_step=input_params.get('snp_number_step'),
+                               ref_freq=input_params.get('ref_freq'),
+                               p_ref_freq=input_params.get('p_ref_freq'),
+                               background_ref_freq=input_params.get('background_ref_freq'),
+                               mutant_alt_exp=input_params.get('mutant_alt_exp'),
+                               wild_alt_exp=input_params.get('wild_alt_exp'),
+                               vcf_ann_file=vcf_ann_file,
+                               save_mem=False)
+    snpscore_obj.score_jobs
+
+    qtlseqr = input_params.get('qtlseqr')
+    ed = input_params.get('ed')
+    if qtlseqr or ed:
+        qtlseqr_snp_table = freq2qtlseqr(snp_table_obj.alt_freq_file)
+        qtlseqr_obj = qtlSeqr(input_table=qtlseqr_snp_table,
+                              window=input_params.get('qtlseqr_window'),
+                              ref_freq=input_params.get('qtlseqr_ref_freq'),
+                              pop_stru=input_params.get('pop_stru'),
+                              min_sample_dp=input_params.get('qtlseqr_min_depth'),
+                              out_dir=outdir,
+                              run_qtlseqr=input_params.get('qtlseqr'),
+                              run_ed=input_params.get('ed'),
+                              web=True)
+        qtlseqr_obj.launch_job
+
+    # 整理结果
+    chr_df = pd.read_csv(chr_size,
+                         sep='\t',
+                         header=None,
+                         names=['chrom', 'size'])
+    ann_number = 100
+    outPath = Path(outdir)
+    results_dir = outPath / f'varBscore-results'
+    plot_cmds = []
+
+    # snpDensity results
+    snp_density_window = input_params.get('snp_density_window')
+    snp_density_step = input_params.get('snp_density_step')
+    logger.info('copy snpDensity files...')
+    snp_density_dir = results_dir / VarScoreOutDirName.snp_density.value
+    snp_density_dir.mkdir(parents=True, exist_ok=True)
+    snp_density_file = outPath / f"{snpscore_obj.group_label}.snp.freq.csv"
+
+    fmt_snp_density_file = format_outfile(snp_density_file,
+                                          snp_density_dir,
+                                          ann_df=snpscore_obj.snp_ann_df,
+                                          chr_list=chr_df.chrom.astype('str'))
+
+    snp_freq_bed = outPath / f"{snpscore_obj.group_label}.snp.plot.bed"
+    snp_density_file_list = [VarScoreDocName.snp_density.value]
+    chr_window = make_chr_window(chr_size, snp_density_window,
+                                 snp_density_step, outPath)
+
+    if Path(chr_window).is_file():
+        window_str = window_number_format(snp_density_window)
+        if snp_density_step:
+            slide_str = window_number_format(snp_density_step)
+            density_stats_suffix = f'.window{window_str}_slide{slide_str}.csv'
+        else:
+            density_stats_suffix = f'.window{window_str}.csv'
+        snp_freq_stats = fmt_snp_density_file.with_suffix(density_stats_suffix)
+        snp_density_stats(chr_window, snp_freq_bed, snp_freq_stats)
+        plot_cmds.append(
+            score_plot(snp_freq_stats, 'density-new', snp_freq_stats.stem,
+                       chr_size, 'web'))
+    else:
+        logger.warning(f'chromosome window file is not valid: {chr_window}...')
+    cp_files(snp_density_file_list, snp_density_dir)
+
+    # varscore results
+    logger.info('copy varBScore files...')
+    varBScore_dir = results_dir / VarScoreOutDirName.var_score.value
+    varBScore_dir.mkdir(parents=True, exist_ok=True)
+    snp_score_file = outPath / f'{snpscore_obj.score_prefix}.var.score.csv'
+    snp_score_ann_file = outPath / f'{snpscore_obj.score_prefix}.var.score.ann.csv'
+    fmt_snp_score_file = format_outfile(snp_score_file,
+                                        varBScore_dir,
+                                        chr_list=chr_df.chrom.astype('str'))
+    format_outfile(snp_score_ann_file,
+                   varBScore_dir,
+                   chr_list=chr_df.chrom.astype('str'))
+
+    snp_score_plt = snp_score_file.with_suffix('.plot.jpg')
+    cp_files([VarScoreDocName.var_score.value], varBScore_dir)
+
+    plot_cmds.append(
+        score_plot(fmt_snp_score_file, 'var', fmt_snp_score_file.stem,
+                   chr_size, 'web'))
+
+    if qtlseqr or ed:
+        qtlseqr_file = qtlseqr_obj.filePath
+        # qtlseqr
+        qtlSeqrDir = results_dir / VarScoreOutDirName.qtlseqr.value
+        if qtlseqr:
+            qtlSeqrDir.mkdir(parents=True, exist_ok=True)
+            cp_files([VarScoreDocName.qtlseqr.value], qtlSeqrDir)
+        qtlSeqrDirFile = qtlSeqrDir / qtlseqr_obj.qtlseqrFileName
+        # ed
+        edDir = results_dir / VarScoreOutDirName.ed.value
+        if ed:
+            edDir.mkdir(parents=True, exist_ok=True)
+            cp_files([VarScoreDocName.ed.value], edDir)
+        edFile = edDir / qtlseqr_obj.edFileName
+        split_qtlseqr_results(qtlseqr_file,
+                              qtlSeqrDirFile,
+                              edFile,
+                              chr_list=chr_df.chrom.astype('str'),
+                              ann_df=snpscore_obj.snp_ann_df)
+        if qtlSeqr:
+            plot_cmds.append(
+                score_plot(qtlSeqrDirFile, 'snpIndex', qtlSeqrDirFile.stem,
+                           chr_size, 'web'))
+            plot_cmds.append(
+                score_plot(qtlSeqrDirFile, 'Gprime', qtlSeqrDirFile.stem,
+                           chr_size, 'web'))
+        if ed:
+            plot_cmds.append(
+                score_plot(edFile, 'ED', edFile.stem, chr_size, 'web'))
+    plot_cmds = list(filter(None, plot_cmds))
+    if plot_cmds:
+        logger.info('Launch plot jobs...')
+        async_batch_sh_jobs(plot_cmds, thread=thread)
+    # compress results
+    zip_cmd = f'cd {outPath}; zip -r {results_dir.name}.zip {results_dir.name}'
+    delegator.run(zip_cmd)
+    logger.info('The End.')
+
+
+if __name__ == '__main__':
+    main()
