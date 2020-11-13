@@ -43,7 +43,8 @@ def allele_depth(reads_inf, allele_num=2):
 def load_table_from_vcf(input_vcf, sample_id):
     table_df = pd.read_csv(input_vcf, sep='\t', comment='#', header=None)
     out_df = table_df.loc[:, [0, 1, 4, 9]]
-    out_df.columns = ['Chr', 'Pos', 'Alt', sample_id]
+    out_df.columns = ['Chr', 'Pos', 'Alt', sample_id]    
+    out_df.loc[:, 'Chr'] = out_df.Chr.astype('str')
     out_df.loc[:, sample_id] = [
         snp_i.split(':')[1] for snp_i in out_df[sample_id]
     ]
