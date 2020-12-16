@@ -75,7 +75,7 @@ def va_density_compare(samples: str,
                        chr_size: str,
                        outdir: str,
                        min_depth: int = 1,
-                       min_alt_freq: float = 0,
+                       min_alt_freq: float = 0.1,
                        window: int = 1000_000,
                        step: Optional[int] = None):
     out_path = Path(outdir)
@@ -99,7 +99,7 @@ def va_density_compare(samples: str,
                 sample_chr_va_df.loc[:,
                                      'alt_freq'] = sample_chr_va_df.alt_count / sample_chr_va_df.depth
                 sample_chr_va_df = sample_chr_va_df[
-                    sample_chr_va_df.alt_freq > min_alt_freq]
+                    sample_chr_va_df.alt_freq >= min_alt_freq]
                 sample_df_list.append(
                     var_density_stats(chrom=str(chr_i),
                                       chr_size=chr_i_size,
