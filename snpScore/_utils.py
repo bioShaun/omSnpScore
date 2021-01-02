@@ -952,9 +952,10 @@ def var_density_stats(
     stats_df_list = []
     ann_alt_freq_df.drop_duplicates(subset=SnpTableConstants.ANN_TABLE_COL[:2],
                                     inplace=True)
-    for chrom, chrom_df in ann_alt_freq_df.groupby(
-        [SnpTableConstants.ANN_TABLE_COL[0]]):
+    for chrom in chr_size_df.index:
         chr_len = chr_size_df.loc[chrom, "chr_len"]
+        chrom_df = ann_alt_freq_df[ann_alt_freq_df[
+            SnpTableConstants.ANN_TABLE_COL[0]] == chrom]
         if step is None:
             step = window
         for start in range(0, window, step):
