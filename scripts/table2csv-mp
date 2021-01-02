@@ -48,7 +48,7 @@ def load_table_from_vcf(input_vcf, sample_id):
     table_df = pd.read_csv(input_vcf, sep='\t', comment='#', header=None)
     out_df = table_df.loc[:, [0, 1, 4, 9]]
     out_df.columns = ['Chr', 'Pos', 'Alt', sample_id]
-    ad_col = ad_col_index(out_df.loc[0].INFO)
+    ad_col = ad_col_index(table_df.loc[0, 8])
     out_df.loc[:, sample_id] = [
         snp_i.split(':')[ad_col] for snp_i in out_df[sample_id]
     ]
