@@ -142,6 +142,8 @@ def snp_ann_pipe(gene_bed,
 
     # step3 filter annotation
     snpeff_ann_df = snp_ann_obj.snp_window_ann_df.copy()
+    # to fix
+    snpeff_ann_df.dropna(inplace=True)
     snpeff_anno = list(snpeff_ann_df.INFO.map(extract_snpeff_anno))
     snpeff_anno_df = pd.DataFrame(snpeff_anno)
     snpeff_anno_df.columns = [
@@ -149,6 +151,7 @@ def snp_ann_pipe(gene_bed,
         'Variant_Protein_Level'
     ]
     flat_target_snp_ann_df = pd.concat([snpeff_ann_df, snpeff_anno_df], axis=1)
+    flat_target_snp_ann_df.dropna(inplace=True)
     flat_target_snp_ann_df.drop('INFO', axis=1, inplace=True)
     flat_target_snp_ann_df = split_dataframe_rows(flat_target_snp_ann_df,
                                                   column_selectors=[

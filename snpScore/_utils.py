@@ -384,7 +384,11 @@ def split_dataframe_rows(df, column_selectors, row_delimiter):
         split_rows = {}
         max_split = 0
         for column_selector in column_selectors:
-            split_row = row[column_selector].split(row_delimiter)
+            try:
+                split_row = row[column_selector].split(row_delimiter)
+            except Exception:
+                print(row)
+                sys.exit(1)
             split_rows[column_selector] = split_row
             if len(split_row) > max_split:
                 max_split = len(split_row)
