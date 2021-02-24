@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+import fire
+import json
+import pandas as pd
+from pathlib import Path
+from snpScore import tableFromVcf, load_snpeff
+
+ANN_TABLE_COL = ("#CHROM", "POS", "REF", "ALT", "INFO")
+
+ANN_TABLE_NAME = 'snp.ann.table.pkl'
+
+def getAnn(info):
+    return info.split('ANN=')[1]
+
+def vcfAnn(vcfFile, annotation_dir):
+    annotation_dir = Path(annotation_dir)
+    ann_df = load_snpeff(vcfFile)
+    for chrom, df in ann_df.groupby([ANN_TABLE_COL[0]]):
+        chrom_dir = annotation_dir / chrom
+        chrom_dir.mkdir(parents=True, exist_ok=True)
+        annotation_file = chrom_dir / ANN_TABLE_NAME
+        if annotation_file.is_file():
+            old_df = pd.read_pickle(annotation_file)
+            df = pd.concat([df, old_df])
+            df.drop_duplicates(subset=["#CHROM", "POS", "ALT"], inplace=True)
+        df.to_pickle(annotation_file)
+
+
+def splitVcf(vcfFile, splitDir,thread=1, sample_prefix=None):
+    vcf2tb_obj = tableFromVcf(vcf=vcfFile, out_dir=splitDir, thread=thread, sample_prefix=sample_prefix, out_format='csv')
+    vcf2tb_obj.make_table
+    return vcf2tb_obj.vcf_samples
+
+
+def main(vcfFile, splitDir, thread=4, sample_prefix=None):
+    splitDir = Path(splitDir)
+    vcfDir = splitDir / 'splitVcf'
+    annDir = splitDir / 'splitAnn'
+    vcfDir.mkdir(parents=True, exist_ok=True)
+    annDir.mkdir(parents=True, exist_ok=True)
+    vcfAnn(vcfFile, annDir)
+    sample_names = splitVcf(vcfFile, vcfDir, thread, sample_prefix)
+    print(json.dumps(sample_names))
+
+
+if __name__ == "__main__":
+    fire.Fire(main)

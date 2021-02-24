@@ -4,8 +4,6 @@ suppressMessages(library(stringr))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(stringr))
 suppressMessages(library(fANCOVA))
-suppressMessages(library(omsCMplot))
-suppressMessages(library(omplotr))
 
 options(stringsAsFactors = F)
 
@@ -79,29 +77,10 @@ plot_cols <- brewer.pal(9, 'Set1')
 wheat_cols <- c(plot_cols[2], plot_cols[3], plot_cols[5])
 
 
-
-
 df <- importFromTable(file=input_table, highBulk = high_bulk, lowBulk = low_bulk)
 df_filt <- filterSNPs(SNPset=df, refAlleleFreq = ref_freq, minSampleDepth = min_sample_dp)
 chrom_num <- length(unique(df_filt$CHROM))
 
-#table_name <- c()
-#params <- c()
-#if (qtlseqr_flag) {
-#    table_name <- c('qtlseqr')
-#    window_params <- str_glue("window_", as.integer(window) / 1e6, 'M')
-#    pop_stru_param <- str_glue("popStru_", pop_stru)
-#    params <- c(window_params, pop_stru_param)
-#}
-#if (ed_flag) {
-#    table_name <- c(table_name, 'ed')
-#}
-#ref_freq_param = str_glue("refFreq_", ref_freq)
-#minDp_param = str_glue("minDepth_", min_sample_dp)
-#params <- c(params, ref_freq_param, minDp_param)
-#table_name <- c(table_name, params, 'csv')
-#table_name_flat <- paste(table_name, collapse = '.')
-#table_prefix <- file.path(out_dir, table_name_flat)
 table_prefix = out_dir
 
 if (qtlseqr_flag && !file.exists(table_prefix)) {
@@ -111,32 +90,6 @@ if (qtlseqr_flag && !file.exists(table_prefix)) {
     out_prefix <- file.path(out_dir, outname)
     df_filt <- runGprimeAnalysis(SNPset = df_filt, windowSize = window, outlierFilter = "deltaSNP")
     df_filt <- runQTLseqAnalysis(df_filt, windowSize = window, popStruc=pop_stru, bulkSize=50, filter=filter_stat)
-    #png(paste(out_prefix, 'deltaSNP.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
-    #print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
-    #dev.off()
-
-    #pdf(paste(out_prefix, 'deltaSNP.pdf', sep='.'), width=4 * chrom_num, height=6)
-    #print(plotQTLStats(SNPset = df_filt, var = "deltaSNP", plotIntervals = TRUE))
-    #dev.off()
-
-    #png(paste(out_prefix, 'Gprime.png', sep='.'), width=4 * chrom_num, height=6, res=300, unit='in')
-    #print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
-    #dev.off()
-
-    #pdf(paste(out_prefix, 'Gprime.pdf', sep='.'), width=4 * chrom_num, height=6)
-    #print(plotQTLStats(SNPset = df_filt, var = "Gprime", plotIntervals = TRUE, q = 0.01))
-    #dev.off()
-
-    #res <- try(getQTLTable(
-    #    SNPset = df_filt,
-    #    alpha = 0.1,
-    #    export = TRUE,
-    #    fileName = paste(out_prefix, "QTLseqr.csv", sep='.')
-    #))
-    #if(inherits(res, "try-error"))
-    #{
-    #   print("Can not find significant region using QTLseqr!")
-    #}
 } 
 
 if (ed_flag && !file.exists(table_prefix)) {
@@ -176,30 +129,6 @@ if (ed_flag && !file.exists(table_prefix)) {
     plot.df$CHROM <- str_remove(plot.df$CHROM, fixed('chr', ignore_case = T))
     cutoff <- 3*(sd(df_filt$fitted)+median(df_filt$fitted))
     df_filt$dis2edcutoff <- df_filt$fitted - cutoff
-    ed_plot <- function() {
-        par(mfrow=c(2,1))
-        plot(1:nrow(plot.df), plot.df$fitted, type='l', 
-            ylim=c(min(plot.df$fitted, na.rm=T),
-            1.1*max(plot.df$fitted, na.rm=T)), 
-            ylab=substitute("ED"^p~ ~"(Loess fit)", list(p=eu_power)), 
-            xaxt='n', xaxs='i', xlab="Chromosome", cex=.6, cex.lab=.8, cex.axis=.8)
-        abline(v=(breaks[1:length(breaks)-1]+2), col="grey")
-        abline(h=cutoff, col='red', lty=2)
-        mtext(unique(plot.df$CHROM[!is.na(plot.df$CHROM)]), at = labelpos, side=1, cex=.5)
-        plot(1:nrow(plot.df), plot.df$unfitted, pch=16, cex=.6, 
-            col="#999999AA", ylim=c(min(plot.df$unfitted, na.rm=T),
-            1.1*max(plot.df$unfitted, na.rm=T)), 
-            ylab=substitute("ED"^p, list(p=power)), 
-            xaxt='n', xaxs='i', xlab="Chromosome", 
-            cex.lab=.8, cex.axis=.8)
-        abline(v=(breaks[1:length(breaks)-1]+2), col="grey")
-        mtext(unique(plot.df$CHROM[!is.na(plot.df$CHROM)]), at = labelpos, side=1, cex=.5)
-    }
-    outname <- paste('ED', ref_freq, min_sample_dp, sep='.')
-    out_prefix <- file.path(out_dir, outname)
-    plot_width <- length(chrs) * 0.1 + 8
-    #save_general_plot(ed_plot(), out_prefix, plot_type = 'png', width = plot_width)
-    #save_general_plot(ed_plot(), out_prefix, plot_type = 'pdf', width = plot_width)
 }
 
 if (!file.exists(table_prefix) ) {

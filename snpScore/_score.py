@@ -4,15 +4,17 @@
 import os
 import attr
 import time
+
+import delegator
 import numpy as np
 import pandas as pd
 from loguru import logger
 from pathlib import Path
 from datetime import datetime
 from collections import OrderedDict
-from ._var import REF_FREQ, QTLSEQR_PLOT, QTLSEQR_PLOT_WEB
+from ._var import REF_FREQ, QTLSEQR_PLOT, QTLSEQR_PLOT_WEB, VAR_TO_VCF_COLUMN_MAP
 from ._var import SnpGroup, MUT_NAME, WILD_NAME, SnpGroupFreq
-from ._utils import freq_accordance
+from ._utils import freq_accordance, table2vcf, extract_snpeff_annotation, table2annotation_df
 from ._utils import alt_ref_cut
 from ._utils import filter_snp
 from ._utils import make_snp_number_windows
@@ -28,6 +30,8 @@ from ._utils import has_parent
 @attr.s
 class snpScoreBox:
     alt_freq_df = attr.ib()
+    snpEff_cfg = attr.ib()
+    snpEff_db = attr.ib()
     outdir = attr.ib(converter=Path)
     chr_size = attr.ib(converter=str)
     grp_list = attr.ib(factory=list)
@@ -42,7 +46,6 @@ class snpScoreBox:
                              converter=lambda x: x if x is None else float(x))
     wild_alt_exp = attr.ib(default=None,
                            converter=lambda x: x if x is None else float(x))
-    vcf_ann_file = attr.ib(default=None)
     save_mem = attr.ib(default=True)
     ann_region_num = attr.ib(default=100)
     filter_method = attr.ib(default="nonsymmetrical")
@@ -152,6 +155,19 @@ class snpScoreBox:
                     self.alt_filter_freq_file, self.filter_method)
         return self._alt_filter_freq_df
 
+    # @property
+    # def vcf_ann_file(self) -> Path:
+    #     if self._vcf_ann_file is None:
+    #         alt_freq_vcf = self.alt_filter_freq_file.with_suffix('.vcf')
+    #         alt_ann_vcf = alt_freq_vcf.with_suffix('.ann.vcf.gz')
+    #         table2vcf(self.alt_freq_df, alt_freq_vcf)
+    #         annotate_cmd = (f'snpEff -Xmx10g -c {self.snpEff_cfg} '
+    #                         f'-v {self.snpEff_db} -quiet {alt_freq_vcf} '
+    #                         f'| bgzip > {alt_ann_vcf}')
+    #         delegator.run(annotate_cmd)
+    #         self._vcf_ann_file = extract_snpeff_annotation(alt_ann_vcf, self.outdir, 'varscore')
+    #     return self._vcf_ann_file
+
     @property
     def snp_number_window_file(self):
         return make_snp_number_windows(self.alt_filter_freq_df,
@@ -166,25 +182,22 @@ class snpScoreBox:
                 self.alt_filter_freq_df, self.group_label,
                 self.snp_number_window_file, self.outdir)
             self._alt_freq_dis_df.loc[:,
-                                 'Chrom'] = self._alt_freq_dis_df['Chrom'].astype(
-                                     'str')                
+            'Chrom'] = self._alt_freq_dis_df['Chrom'].astype('str')
         return self._alt_freq_dis_df
 
     @property
     def snp_ann_df(self):
         if self._snp_ann_df is None:
-            logger.info('Loading snp annotation...')
-            self._snp_ann_df = pd.read_pickle(self.vcf_ann_file)
-            self._snp_ann_df.loc[:,
-                                 '#CHROM'] = self._snp_ann_df['#CHROM'].astype(
-                                     'str')
+            self._snp_ann_df = table2annotation_df(
+                input_table=self.alt_filter_freq_file, column_map=VAR_TO_VCF_COLUMN_MAP, snpeff_db=self.snpEff_db,
+                snpeff_cfg=self.snpEff_cfg, annotation_dir=self.outdir, prefix='varscore')
         return self._snp_ann_df
 
     @property
     def snp_window_ann_df(self):
         if self._snp_window_ann_df is None:
             # add snp annotation to snp score region
-            if self.vcf_ann_file:
+            if self.snp_ann_df is not None:
                 logger.info('Generating snp window annotation...')
                 self._snp_window_ann_df = self.alt_freq_dis_df.merge(
                     self.snp_ann_df,
@@ -196,24 +209,6 @@ class snpScoreBox:
                 self._snp_window_ann_df.drop(['#CHROM', 'POS', 'Alt'],
                                              inplace=True,
                                              axis=1)
-                # if not self._snp_window_ann_df.empty:
-                #     snpeff_anno = list(
-                #         self._snp_window_ann_df.INFO.map(extract_snpeff_anno))
-                #     snpeff_anno_df = pd.DataFrame(snpeff_anno)
-                #     snpeff_anno_df.columns = [
-                #         'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
-                #         'Variant_Protein_Level'
-                #     ]
-                #     self._snp_window_ann_df = pd.concat(
-                #         [self._snp_window_ann_df, snpeff_anno_df], axis=1)
-                #     self._snp_window_ann_df.drop('INFO', axis=1, inplace=True)
-                #     self._snp_window_ann_df = split_dataframe_rows(
-                #         self._snp_window_ann_df,
-                #         column_selectors=[
-                #             'Feature', 'Gene', 'Transcript',
-                #             'Variant_DNA_Level', 'Variant_Protein_Level'
-                #         ],
-                #         row_delimiter='|')
             else:
                 self._snp_window_ann_df = self.alt_freq_dis_df
         return self._snp_window_ann_df
@@ -224,10 +219,10 @@ class snpScoreBox:
         logger.info('Annotating snp score...')
         # ann_score_df = self.score_df.sort_values(['snp_score'],
         #                                          ascending=False)
-        #ann_score_df = ann_score_df[:100]
+        # ann_score_df = ann_score_df[:100]
         self.score_df = self.score_df.reset_index()
-        self.score_df.loc[:,'Chrom'] = self.score_df['Chrom'].astype(
-                                     'str')           
+        self.score_df.loc[:, 'Chrom'] = self.score_df['Chrom'].astype(
+            'str')
         self._score_ann_df = self.score_df.merge(
             self.snp_window_ann_df,
             left_on=['Chrom', 'Start', 'End'],
@@ -245,7 +240,7 @@ class snpScoreBox:
             if 'est' in method:
                 method_name = f'{method}.{self.est_label}'
             self.score_file = self.outdir / \
-                f'{score_name}.{method_name}.score.csv'
+                              f'{score_name}.{method_name}.score.csv'
             if not self.score_file.is_file():
                 logger.info(
                     'Calculating snp score using {window} by {method}...',
@@ -263,7 +258,7 @@ class snpScoreBox:
                 score_plot(self.score_file, method,
                            f'{score_name}.{method_name}', self.chr_size))
             self.score_ann_file = self.outdir / \
-                f'{score_name}.{method}.score.ann.csv'
+                                  f'{score_name}.{method}.score.ann.csv'
             if not self.score_ann_file.is_file():
                 self.score_ann_df.to_csv(self.score_ann_file, index=False)
                 if self.save_mem:
@@ -279,7 +274,6 @@ class snpScoreBox:
 
 @attr.s
 class snpAnnBox(snpScoreBox):
-
     target_bed = attr.ib(default=None)
 
     @property
@@ -332,7 +326,7 @@ class snpFilterBox:
         else:
             logger.info('Filtering snp by freq...')
             self.alt_freq_df.loc[:, 'AFD'] = self.alt_freq_df[
-                'mutant.FREQ'] - self.alt_freq_df['wild.FREQ']
+                                                 'mutant.FREQ'] - self.alt_freq_df['wild.FREQ']
             filter_mask = non_score_filter_snp(self.alt_freq_df,
                                                self.mutant_freq,
                                                self.wild_freq,
@@ -342,8 +336,8 @@ class snpFilterBox:
             alt_filter_freq_df = self.alt_freq_df[filter_mask].copy()
             if self.hasParent:
                 alt_filter_freq_df.loc[:, 'P_AFD'] = self.alt_freq_df[
-                    SnpGroupFreq.mut_pa.value] - self.alt_freq_df[
-                        SnpGroupFreq.wild_pa.value]
+                                                         SnpGroupFreq.mut_pa.value] - self.alt_freq_df[
+                                                         SnpGroupFreq.wild_pa.value]
                 parent_mask = non_score_filter_snp(alt_filter_freq_df,
                                                    self.pat_mutant_freq,
                                                    self.pat_wild_freq,
@@ -359,7 +353,6 @@ class snpFilterBox:
 
 @attr.s
 class qtlSeqr:
-
     input_table = attr.ib(converter=Path)
     out_dir = attr.ib(converter=Path)
     run_qtlseqr = attr.ib(factory=bool)
@@ -431,3 +424,8 @@ class qtlSeqr:
         job_cmd = self.qtlseqr_job
         if job_cmd:
             os.system(job_cmd)
+
+    @property
+    def annotation_df(self):
+        
+
