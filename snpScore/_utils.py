@@ -1049,7 +1049,7 @@ def table2annotation_df(
     column_map: dict,
     snpeff_cfg: str,
     snpeff_db: str,
-    annotation_dir: str,
+    annotation_dir: Union[str, Path],
     prefix: str,
 ) -> pd.DataFrame:
     annotation_dir = Path(annotation_dir).absolute()

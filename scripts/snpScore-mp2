@@ -207,7 +207,6 @@ def main(
                 circos_plot(snp_score_file, qtlseqr_file, snp_freq_file, circos_dir)
             )
     plot_cmd = list(filter(None, plot_cmd))
-    print(plot_cmd)
     async_batch_sh_jobs(plot_cmd, thread=thread)
 
     # cp readme
