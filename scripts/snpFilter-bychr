@@ -102,10 +102,12 @@ def main(
     format_res_dir = results_dir / "fmt"
     format_res_dir.mkdir(parents=True, exist_ok=True)
 
+    chromosome_snpeff_db = f"{snpeff_db}.{chrom}"
+
     snp_annotation_df = table2annotation_df(
         input_table=snpFilter_obj.alt_filter_freq_file,
         column_map=VAR_TO_VCF_COLUMN_MAP,
-        snpeff_db=snpeff_db,
+        snpeff_db=chromosome_snpeff_db,
         snpeff_cfg=snpeff_cfg,
         annotation_dir=results_dir,
         prefix="qtlseqr",

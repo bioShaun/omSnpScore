@@ -75,11 +75,12 @@ def main(
     )
 
     snp_score_methods = ["var"]
+    chromosome_snpeff_db = f"{snpeff_db}.{chrom}"
 
     snpscore_obj = snpScoreBox(
         alt_freq_df=snp_table_obj.alt_freq_df,
         snpEff_cfg=snpeff_cfg,
-        snpEff_db=snpeff_db,
+        snpEff_db=chromosome_snpeff_db,
         grp_list=group_list,
         method_list=snp_score_methods,
         outdir=results_dir,
@@ -128,7 +129,7 @@ def main(
         qtlseqr_snp_annotation_df = table2annotation_df(
             input_table=qtlseqr_obj.filePath,
             column_map=QTLSEQR_TO_VCF_COLUMN_MAP,
-            snpeff_db=snpeff_db,
+            snpeff_db=chromosome_snpeff_db,
             snpeff_cfg=snpeff_cfg,
             annotation_dir=results_dir,
             prefix="qtlseqr",
