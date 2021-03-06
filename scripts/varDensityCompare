@@ -89,41 +89,43 @@ def va_density_compare(
     out_path = Path(outdir)
     if out_path.is_dir():
         return
-    sample_list = samples.split(",")
     chr_df = pd.read_csv(chr_size, sep="\t", index_col=0, names=["chr_len"])
-    va_path = Path(va_dir)
+    va_pathes = [Path(dir_i) for dir_i in va_dir.split(",")]
     all_stats_list = []
-    for sample_i in sample_list:
+    for sample_i in samples.split(","):
         sample_df_list = []
         for chr_i in chr_df.index:
             chr_i_size = chr_df.loc[chr_i, "chr_len"]
-            sample_chr_va_file = va_path / sample_i / f"{chr_i}.csv"
-            if sample_chr_va_file.is_file():
-                sample_chr_va_df = pd.read_csv(sample_chr_va_file)
-                sample_chr_va_df.loc[:, "depth"] = (
-                    sample_chr_va_df.ref_count + sample_chr_va_df.alt_count
-                )
-                sample_chr_va_df = sample_chr_va_df[sample_chr_va_df.depth >= min_depth]
-                sample_chr_va_df.loc[:, "alt_freq"] = (
-                    sample_chr_va_df.alt_count / sample_chr_va_df.depth
-                )
-                sample_chr_va_df = sample_chr_va_df[
-                    sample_chr_va_df.alt_freq >= min_alt_freq
-                ]
-                if plant:
-                    sample_label = "-".join(sample_i.split("-")[1:])
-                else:
-                    sample_label = sample_i
-                sample_df_list.append(
-                    var_density_stats(
-                        chrom=str(chr_i),
-                        chr_size=chr_i_size,
-                        var_df=sample_chr_va_df,
-                        window=window,
-                        step=step,
-                        label=sample_label,
+            for va_path in va_pathes:
+                sample_chr_va_file = va_path / sample_i / f"{chr_i}.csv"
+                if sample_chr_va_file.is_file():
+                    sample_chr_va_df = pd.read_csv(sample_chr_va_file)
+                    sample_chr_va_df.loc[:, "depth"] = (
+                        sample_chr_va_df.ref_count + sample_chr_va_df.alt_count
                     )
-                )
+                    sample_chr_va_df = sample_chr_va_df[
+                        sample_chr_va_df.depth >= min_depth
+                    ]
+                    sample_chr_va_df.loc[:, "alt_freq"] = (
+                        sample_chr_va_df.alt_count / sample_chr_va_df.depth
+                    )
+                    sample_chr_va_df = sample_chr_va_df[
+                        sample_chr_va_df.alt_freq >= min_alt_freq
+                    ]
+                    if plant:
+                        sample_label = "-".join(sample_i.split("-")[1:])
+                    else:
+                        sample_label = sample_i
+                    sample_df_list.append(
+                        var_density_stats(
+                            chrom=str(chr_i),
+                            chr_size=chr_i_size,
+                            var_df=sample_chr_va_df,
+                            window=window,
+                            step=step,
+                            label=sample_label,
+                        )
+                    )
         all_stats_list.append(pd.concat(sample_df_list))
     stats_df = reduce(
         lambda x, y: pd.merge(
