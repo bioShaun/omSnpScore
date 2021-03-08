@@ -2,66 +2,53 @@
 
 from setuptools import setup, find_packages
 
-version = '1.0dev'
+version = "1.0dev"
 
-msg = '''------------------------------
+msg = """------------------------------
 Installing omSnpScore version {}
 ------------------------------
-'''.format(version)
+""".format(
+    version
+)
 print(msg)
 
 setup(
-    name='omSnpScore',
+    name="omSnpScore",
     version=version,
-    author='lx Gui',
-    author_email='guilixuan@gmail.com',
-    keywords=['bioinformatics', 'NGS', 'Reseq', 'SNP'],
-    license='MIT',
+    author="lx Gui",
+    author_email="guilixuan@gmail.com",
+    keywords=["bioinformatics", "NGS", "Reseq", "SNP"],
+    license="MIT",
     packages=find_packages(),
     include_package_data=True,
     scripts=[
-        'scripts/snpScore',
-        'scripts/table2hd5',
-        'scripts/table2pkl',
-        'scripts/table2pkl-mp',
-        'scripts/table2csv-mp',
-        'scripts/snpScore-cli',
-        'scripts/snpScore-mp',
-        'scripts/snpScore-bychr',
-        'scripts/merge_vcf_feature',
-        'scripts/snpInf',
-        'scripts/snpInf-bychr',
-        'scripts/snpInf-cli',
-        'scripts/snpScore-mp-cli',
-        'scripts/snpScore-bychr-cli',
-        'scripts/splitVcf',
-        'scripts/splitVcf-mp',
-        'scripts/snpScore-mp2',
-        'scripts/snpScore-mp2-test',
-        'scripts/snpScore-bychr-test',
-        'scripts/varDensityCompare',
-        'scripts/varDensityCompare-cli',
-        'scripts/snpFilter-cli',
-        'scripts/snpFilter-bychr',
-        'scripts/snpFilter-mp',
-        'scripts/snpScore-web',
+        "scripts/publicSample",
+        "scripts/table2csv-mp",
+        "scripts/splitVcf-mp",
+        "scripts/snpScore-bychr",
+        "scripts/snpScore-mp2",
+        "scripts/varDensityCompare",
+        "scripts/varDensityCompare-cli",
+        "scripts/snpFilter-cli",
+        "scripts/snpFilter-bychr",
+        "scripts/snpFilter-mp",
     ],
     install_requires=[
-        'fire',
-        'click',
-        'pandas',
-        'loguru',
-        'delegator.py',
-        'pybedtools',
-        'numpy',
-        'tables',
-        'attrs',
-        'jinja2',
+        "fire",
+        "click",
+        "pandas",
+        "loguru",
+        "delegator.py",
+        "pybedtools",
+        "numpy",
+        "tables",
+        "attrs",
+        "jinja2",
     ],
 )
 
-msg = '''------------------------------
+msg = """------------------------------
 omSnpScore installation complete!
 ------------------------------
-'''
+"""
 print(msg)

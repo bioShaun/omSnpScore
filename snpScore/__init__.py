@@ -32,6 +32,8 @@ from ._utils import make_chr_window
 from ._utils import window_number_format
 from ._utils import add_snp_ann
 from ._utils import check_output
+from ._utils import load_snpeff
+from ._utils import table2annotation_df
 from ._ann import snp_ann_pipe
 from ._var import CHR_SIZE
 from ._var import CHR_WINDOW
@@ -40,6 +42,8 @@ from ._var import VarScoreDocName
 from ._var import SNP_DENSITY_POS_COLS
 from ._var import QTLSEQR_POS_COLS
 from ._var import VAR_DENSITY_PLOT
+from ._var import QTLSEQR_TO_VCF_COLUMN_MAP
+from ._var import VAR_TO_VCF_COLUMN_MAP
 from ._score import snpFilterBox
 from ._utils import var_density_stats
 from ._utils import var_density_file_suffix

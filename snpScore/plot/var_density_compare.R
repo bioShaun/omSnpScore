@@ -63,8 +63,10 @@ chrom_list <- as.character(unique(m_var_density_df$chrom))
 chrom_num <- length(chrom_list)
 sample_num_scale = ifelse(sample_num < 2, 2, sample_num)
 p_width = 2 * chrom_num * sample_num_scale / 7
-ggsave(paste(out_prefix, 'png', sep='.'), 
-       plot = p, width = p_width, height = 12,
-       dpi = 300, type = "cairo")
+if (p_width <= 50){
+    ggsave(paste(out_prefix, 'png', sep='.'),
+           plot = p, width = p_width, height = 12,
+           dpi = 300, type = "cairo")
+}
 ggsave(paste(out_prefix, 'pdf', sep='.'), 
-       plot = p, width = p_width, height = 12)
+       plot = p, width = p_width, height = 12, limitsize=F)

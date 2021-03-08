@@ -2,36 +2,13 @@
 
 import fire
 import json
-import pandas as pd
 from pathlib import Path
 from snpScore import tableFromVcf
 
-ANN_TABLE_COL = ("#CHROM", "POS", "REF", "ALT", "INFO")
 
-ANN_TABLE_NAME = 'snp.ann.table.pkl'
-
-def getAnn(info):
-    return info.split('ANN=')[1]
-
-def vcfAnn(vcfFile, annoDir):
-    annoDir = Path(annoDir)
-    ann_df = pd.read_csv(vcfFile, sep='\t', header=None, comment="#", dtype={0: str})
-    ann_df = ann_df.loc[:, [0, 1, 3, 4, 7]]
-    ann_df.columns = ANN_TABLE_COL
-    ann_df.loc[:, 'INFO'] = ann_df.INFO.map(getAnn)
-    for chrom, df in ann_df.groupby([ANN_TABLE_COL[0]]):
-        chrom_dir = annoDir / chrom
-        chrom_dir.mkdir(parents=True, exist_ok=True)
-        annoFile = chrom_dir / ANN_TABLE_NAME
-        if annoFile.is_file():
-            old_df = pd.read_pickle(annoFile)
-            df = pd.concat([df, old_df])
-            df.drop_duplicates(subset=["#CHROM", "POS", "ALT"], inplace=True)
-        df.to_pickle(annoFile)
-
-
-def splitVcf(vcfFile, splitDir,thread=1, sample_prefix=None):
-    vcf2tb_obj = tableFromVcf(vcf=vcfFile, out_dir=splitDir, thread=thread, sample_prefix=sample_prefix, out_format='csv')
+def splitVcf(vcfFile, splitDir, thread=1, sample_prefix=None):
+    vcf2tb_obj = tableFromVcf(vcf=vcfFile, out_dir=splitDir, thread=thread, sample_prefix=sample_prefix,
+                              out_format='csv')
     vcf2tb_obj.make_table
     return vcf2tb_obj.vcf_samples
 
@@ -39,10 +16,7 @@ def splitVcf(vcfFile, splitDir,thread=1, sample_prefix=None):
 def main(vcfFile, splitDir, thread=4, sample_prefix=None):
     splitDir = Path(splitDir)
     vcfDir = splitDir / 'splitVcf'
-    annDir = splitDir / 'splitAnn'
     vcfDir.mkdir(parents=True, exist_ok=True)
-    annDir.mkdir(parents=True, exist_ok=True)
-    vcfAnn(vcfFile, annDir)
     sample_names = splitVcf(vcfFile, vcfDir, thread, sample_prefix)
     print(json.dumps(sample_names))
 

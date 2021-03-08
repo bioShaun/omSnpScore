@@ -1,5 +1,6 @@
 import gzip
 import attr
+import delegator
 import numpy as np
 import pandas as pd
 from loguru import logger
@@ -7,7 +8,7 @@ from pathlib import Path
 from functools import reduce
 from ._var import MUT_NAME, WILD_NAME
 from ._var import VCF_SAMPLE_INDEX
-from ._utils import async_batch_sh_jobs, check_app
+from ._utils import async_batch_sh_jobs, check_app, table2vcf, extract_snpeff_annotation
 from ._utils import SampleFileNotMatch, UnsupportedFormat
 from ._utils import DuplicatedRecord
 from ._utils import valid_grp
@@ -15,7 +16,6 @@ from ._utils import valid_grp
 
 @attr.s
 class tableFromVcf:
-
     vcf = attr.ib(converter=Path)
     out_dir = attr.ib(converter=Path)
     thread = attr.ib(default=1, converter=int)
@@ -60,8 +60,8 @@ class tableFromVcf:
         if self.out_format == 'csv':
             check_app('table2csv-mp')
             cmd = (f'bcftools view --samples {sample_id} {self.vcf} | '
-               f'table2csv-mp from_stdin --sample_id {sample_id} '
-               f'--csv-dir {self.out_dir}/{name}')
+                   f'table2csv-mp from_stdin --sample_id {sample_id} '
+                   f'--csv-dir {self.out_dir}/{name}')
         return cmd
 
     @property
@@ -71,7 +71,6 @@ class tableFromVcf:
         cmd_list = [self._extract_from_vcf(sp_i) for sp_i in self.samples]
         async_batch_sh_jobs(cmd_list, self.thread)
         logger.info('Extracting sample vcf done.')
-
 
 
 @attr.s
@@ -122,7 +121,6 @@ class tableFromSelectTable(tableFromVcf):
 
 @attr.s
 class snpTable:
-
     out_dir = attr.ib(converter=Path)
     table_dirs = attr.ib(factory=list)
     samples = attr.ib(factory=list)
@@ -234,8 +232,8 @@ class snpTable:
                 self._alt_freq_df = pd.read_csv(self.alt_freq_file)
             else:
                 dep_passed_snp = self.grp_dep_df.loc[:,
-                                                     self.filter_dp_grp].min(
-                                                         1) >= self.min_depth
+                                 self.filter_dp_grp].min(
+                    1) >= self.min_depth
                 self.passed_grp_dep_df = self.grp_dep_df[dep_passed_snp]
                 self.passed_grp_alt_dep_df = self.grp_alt_dep_df[
                     dep_passed_snp]
@@ -244,7 +242,7 @@ class snpTable:
                     lambda x: x if x >= self.min_depth else np.nan)
                 logger.info('Calculating alt allele freq...')
                 self._alt_freq_df = self.passed_grp_alt_dep_df / \
-                    self.passed_grp_dep_df
+                                    self.passed_grp_dep_df
                 self._alt_freq_df.columns = [
                     f'{col_i}.FREQ' for col_i in self._alt_freq_df.columns
                 ]
@@ -323,7 +321,7 @@ class snpTableMP(snpTable):
                     # filter multi alt snp
                     table_i_df = table_i_df[~table_i_df.Alt.str.contains(",")]
                     table_i_df = table_i_df.set_index(
-                        ['Chr', 'Pos', 'Alt',
+                        ['Chr', 'Pos', 'Ref', 'Alt',
                          'sample_id']).unstack('sample_id')
                 else:
                     raise UnsupportedFormat
@@ -331,7 +329,7 @@ class snpTableMP(snpTable):
             logger.info('Concatinating tables...')
             self._ad_df = reduce(
                 lambda x, y: pd.merge(
-                    x, y, on=['Chr', 'Pos', 'Alt'], how=self.merge_method),
+                    x, y, on=['Chr', 'Pos', 'Ref', 'Alt'], how=self.merge_method),
                 self.ad_dfs)
             self._ad_df.fillna(0, inplace=True)
             self._ad_df = self._ad_df.astype('int')
@@ -353,7 +351,6 @@ class snpTableMP(snpTable):
             self._grp_dep_df = self.grp_ref_dep_df + self.grp_alt_dep_df
             self._grp_dep_df = self._grp_dep_df.astype('int')
         return self._grp_dep_df
-
 
 @attr.s
 class snpAnnTable(snpTable):
@@ -382,8 +379,8 @@ class snpAnnTable(snpTable):
                 self._alt_freq_df = pd.read_csv(self.alt_freq_file)
             else:
                 dep_passed_snp = self.grp_dep_df.loc[:,
-                                                     self.filter_dp_grp].max(
-                                                         1) >= self.min_depth
+                                 self.filter_dp_grp].max(
+                    1) >= self.min_depth
                 self.passed_grp_dep_df = self.grp_dep_df[dep_passed_snp]
                 self.passed_grp_alt_dep_df = self.grp_alt_dep_df[
                     dep_passed_snp]
@@ -392,7 +389,7 @@ class snpAnnTable(snpTable):
                     lambda x: x if x >= self.min_depth else np.nan)
                 logger.info('Calculating alt allele freq...')
                 self._alt_freq_df = self.passed_grp_alt_dep_df / \
-                    self.passed_grp_dep_df
+                                    self.passed_grp_dep_df
                 self._alt_freq_df.columns = [
                     f'{col_i}.FREQ' for col_i in self._alt_freq_df.columns
                 ]
@@ -435,8 +432,8 @@ class snpAnnTableByChr(snpTableMP):
                 self._alt_freq_df = pd.read_csv(self.alt_freq_file)
             else:
                 dep_passed_snp = self.grp_dep_df.loc[:,
-                                                     self.filter_dp_grp].max(
-                                                         1) >= self.min_depth
+                                 self.filter_dp_grp].max(
+                    1) >= self.min_depth
                 self.passed_grp_dep_df = self.grp_dep_df[dep_passed_snp]
                 self.passed_grp_alt_dep_df = self.grp_alt_dep_df[
                     dep_passed_snp]
@@ -445,7 +442,7 @@ class snpAnnTableByChr(snpTableMP):
                     lambda x: x if x >= self.min_depth else np.nan)
                 logger.info('Calculating alt allele freq...')
                 self._alt_freq_df = self.passed_grp_alt_dep_df / \
-                    self.passed_grp_dep_df
+                                    self.passed_grp_dep_df
                 self._alt_freq_df.columns = [
                     f'{col_i}.FREQ' for col_i in self._alt_freq_df.columns
                 ]

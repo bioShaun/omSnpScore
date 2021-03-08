@@ -11,44 +11,47 @@ from snpScore import snpTableMP, async_batch_sh_jobs
 from snpScore import snpScoreBox, qtlSeqr, CHR_SIZE
 from snpScore import outdir_suffix_from_params, add_default_params
 from snpScore import freq2qtlseqr, format_outfile, QTLSEQR_POS_COLS
+from snpScore import table2annotation_df, QTLSEQR_TO_VCF_COLUMN_MAP
 
 
 @click.command()
-@click.option('-p',
-              '--parameters',
-              help='snpScore parameters json string.',
-              required=True,
-              type=click.STRING)
-@click.option('-d',
-              '--vcf_dir',
-              help=('vcf table directory, can be more than one '
-                    '[--vcf_dir dir1 --vcf_dir dir2].'),
-              type=click.Path(exists=True, file_okay=False),
-              multiple=True)
-@click.option('--vcf_ann_dir',
-              help='snp annotation dir.',
-              required=True,
-              type=click.Path(exists=True, file_okay=False))
-@click.option('--chr_size',
-              help='chr size file, default is chr size of bread wheat.',
-              type=click.Path(exists=True, dir_okay=False),
-              default=CHR_SIZE)
-@click.option('-o',
-              '--outdir',
-              help='results directory.',
-              required=True,
-              type=click.Path())
-@click.option('--chrom',
-              help='results directory.',
-              required=True,
-              type=click.STRING)
-@click.option('-t',
-              '--thread',
-              help='paralle number',
-              default=4,
-              type=click.INT)     
-@click.option('--plant', help='for general plant', is_flag=True)                          
-def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom, thread, plant):
+@click.option(
+    "-p",
+    "--parameters",
+    help="snpScore parameters json string.",
+    required=True,
+    type=click.STRING,
+)
+@click.option(
+    "-d",
+    "--vcf_dir",
+    help=(
+        "vcf table directory, can be more than one " "[--vcf_dir dir1 --vcf_dir dir2]."
+    ),
+    type=click.Path(exists=True, file_okay=False),
+    multiple=True,
+)
+@click.option(
+    "--chr_size",
+    help="chr size file, default is chr size of bread wheat.",
+    type=click.Path(exists=True, dir_okay=False),
+    default=CHR_SIZE,
+)
+@click.option(
+    "--snpeff_cfg",
+    help="snpEff config file.",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option("--snpeff_db", help="snpEff database name.", type=click.STRING)
+@click.option(
+    "-o", "--outdir", help="results directory.", required=True, type=click.Path()
+)
+@click.option("--chrom", help="results directory.", required=True, type=click.STRING)
+@click.option("-t", "--thread", help="paralle number", default=4, type=click.INT)
+@click.option("--plant", help="for general plant", is_flag=True)
+def main(
+    parameters, vcf_dir, chr_size, outdir, chrom, thread, plant, snpeff_cfg, snpeff_db
+):
     parameters_obj = json.loads(parameters)
     input_params = add_default_params(parameters_obj)
     sample_list, group_list = sample_and_group_for_web(parameters_obj)
@@ -56,85 +59,90 @@ def main(parameters, vcf_dir, vcf_ann_dir, chr_size, outdir, chrom, thread, plan
     outdir = Path(outdir)
     if plant:
         full_outdir = outdir
-    else:    
+    else:
         outdir_suffix = outdir_suffix_from_params(parameters_obj)
         outdir = outdir.resolve()
         full_outdir = outdir / outdir_suffix
-    results_dir = full_outdir / f'analysis/split/{chrom}'
+    results_dir = full_outdir / f"analysis/split/{chrom}"
 
-    snp_table_obj = snpTableMP(out_dir=results_dir,
-                               table_dirs=vcf_dir,
-                               samples=sample_list,
-                               sample_label=group_list,
-                               min_depth=input_params.get('min_depth'),
-                               chrom=chrom)
+    snp_table_obj = snpTableMP(
+        out_dir=results_dir,
+        table_dirs=vcf_dir,
+        samples=sample_list,
+        sample_label=group_list,
+        min_depth=input_params.get("min_depth"),
+        chrom=chrom,
+    )
 
-    snp_score_methods = []
-    snp_score_methods.append('var')
-
-    vcf_ann_file = Path(vcf_ann_dir) / f'{chrom}' / 'snp.ann.table.pkl'
+    snp_score_methods = ["var"]
+    chromosome_snpeff_db = f"{snpeff_db}.{chrom}"
 
     snpscore_obj = snpScoreBox(
         alt_freq_df=snp_table_obj.alt_freq_df,
+        snpEff_cfg=snpeff_cfg,
+        snpEff_db=chromosome_snpeff_db,
         grp_list=group_list,
         method_list=snp_score_methods,
         outdir=results_dir,
         chr_size=chr_size,
-        min_depth=input_params.get('min_depth'),
-        snp_number_window=input_params.get('snp_number_window'),
-        snp_number_step=input_params.get('snp_number_step'),
-        ref_freq=input_params.get('ref_freq'),
-        p_ref_freq=input_params.get('p_ref_freq'),
-        background_ref_freq=input_params.get('background_ref_freq'),
-        mutant_alt_exp=input_params.get('mutant_alt_exp'),
-        wild_alt_exp=input_params.get('wild_alt_exp'),
-        vcf_ann_file=vcf_ann_file,
-        filter_method=input_params.get('filter_method', "nonsymmetrical"),
-        save_mem=False)
+        min_depth=input_params.get("min_depth"),
+        snp_number_window=input_params.get("snp_number_window"),
+        snp_number_step=input_params.get("snp_number_step"),
+        ref_freq=input_params.get("ref_freq"),
+        p_ref_freq=input_params.get("p_ref_freq"),
+        background_ref_freq=input_params.get("background_ref_freq"),
+        mutant_alt_exp=input_params.get("mutant_alt_exp"),
+        wild_alt_exp=input_params.get("wild_alt_exp"),
+        filter_method=input_params.get("filter_method", "nonsymmetrical"),
+        save_mem=False,
+    )
     snpscore_obj.score_jobs
 
-    if input_params.get('qtlseqr') or input_params.get('ed'):
-        qtlseqr_snp_table = freq2qtlseqr(snp_table_obj.alt_freq_file)
-        qtlseqr_ref_freq = input_params.get('qtlseqr_ref_freq', 0.3)
-        pop_stru = input_params.get('pop_stru', 'RIL')
-        min_sample_dp = input_params.get('min_depth', 5)
-        #out_prefix = results_dir / f'ref_freq_{qtlseqr_ref_freq}.pop_struc_{pop_stru}_md_{min_sample_dp}'
-        qtlseqr_obj = qtlSeqr(
-            input_table=qtlseqr_snp_table,
-            window=input_params.get('qtlseqr_window', 1e7),
-            ref_freq=input_params.get('qtlseqr_ref_freq', 0.3),
-            pop_stru=input_params.get('pop_stru', 'RIL'),
-            min_sample_dp=input_params.get('qtlseqr_min_depth', 5),
-            out_dir=results_dir,
-            run_qtlseqr=input_params.get('qtlseqr'),
-            run_ed=input_params.get('ed'),
-            web=True)
-        qtlseqr_obj.launch_job
-
     # format output
-    chr_df = pd.read_csv(chr_size,
-                         sep='\t',
-                         header=None,
-                         names=['chrom', 'size'])
-    ## snp density
-    format_res_dir = results_dir / 'fmt'
+    chr_df = pd.read_csv(chr_size, sep="\t", header=None, names=["chrom", "size"])
+    # snp density
+    format_res_dir = results_dir / "fmt"
     format_res_dir.mkdir(parents=True, exist_ok=True)
     snp_density_file = results_dir / f"{snpscore_obj.group_label}.snp.freq.csv"
-    format_outfile(snp_density_file,
-                   format_res_dir,
-                   ann_df=snpscore_obj.snp_ann_df,
-                   chr_list=chr_df.chrom.astype('str'))
+    format_outfile(
+        snp_density_file,
+        format_res_dir,
+        ann_df=snpscore_obj.snp_ann_df,
+        chr_list=chr_df.chrom.astype("str"),
+    )
 
-    ## qtlseqr
-    if input_params.get('qtlseqr') or input_params.get('ed'):
-        qtlseqr_file = qtlseqr_obj.filePath
-        format_outfile(qtlseqr_file,
-                       format_res_dir,
-                       ann_df=snpscore_obj.snp_ann_df,
-                       chr_list=chr_df.chrom.astype('str'),
-                       float_format=None,
-                       merge_cols=QTLSEQR_POS_COLS)
+    if input_params.get("qtlseqr") or input_params.get("ed"):
+        qtlseqr_snp_table = freq2qtlseqr(snp_table_obj.alt_freq_file)
+        qtlseqr_obj = qtlSeqr(
+            input_table=qtlseqr_snp_table,
+            window=input_params.get("qtlseqr_window", 1e7),
+            ref_freq=input_params.get("qtlseqr_ref_freq", 0.3),
+            pop_stru=input_params.get("pop_stru", "RIL"),
+            min_sample_dp=input_params.get("qtlseqr_min_depth", 5),
+            out_dir=results_dir,
+            run_qtlseqr=input_params.get("qtlseqr"),
+            run_ed=input_params.get("ed"),
+            web=True,
+        )
+        qtlseqr_obj.launch_job
+
+        qtlseqr_snp_annotation_df = table2annotation_df(
+            input_table=qtlseqr_obj.filePath,
+            column_map=QTLSEQR_TO_VCF_COLUMN_MAP,
+            snpeff_db=chromosome_snpeff_db,
+            snpeff_cfg=snpeff_cfg,
+            annotation_dir=results_dir,
+            prefix="qtlseqr",
+        )
+        format_outfile(
+            qtlseqr_obj.filePath,
+            format_res_dir,
+            ann_df=qtlseqr_snp_annotation_df,
+            chr_list=chr_df.chrom.astype("str"),
+            float_format=None,
+            merge_cols=QTLSEQR_POS_COLS,
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

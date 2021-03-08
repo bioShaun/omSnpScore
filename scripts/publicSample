@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+from pathlib import Path
+import typer
+import delegator
+
+
+def main(
+    vcf_file: Path = typer.Option(...),
+    file_dir: Path = typer.Option(...),
+    public_split_dir: Path = typer.Option(...),
+    public_vcf_dir: Path = typer.Option(...),
+    gmId: Path = typer.Option(...),
+):
+    public_split_file = public_split_dir / gmId
+    if not public_split_file.is_dir():
+        copy_split_file = f"cp -r {file_dir} {public_split_dir}/{gmId}"
+        delegator.run(copy_split_file)
+
+    public_vcf_file = public_vcf_dir / f"{gmId}.vcf.gz"
+    if not public_vcf_file.is_file():
+        public_vcf_file_name = public_vcf_dir / f"{gmId}.name.txt"
+        with open(public_vcf_file_name, "w") as name_inf:
+            name_inf.write(f"{gmId}\n")
+
+        sample_name = "-".join(file_dir.name.split("-")[1:])
+
+        extract_vcf = (
+            f"bcftools view --samples {sample_name} {vcf_file} | "
+            f"bcftools reheader -s {public_vcf_file_name} - | "
+            f"bgzip > {public_vcf_file}"
+        )
+        delegator.run(extract_vcf)
+
+    public_vcf_idx = public_vcf_dir / f"{gmId}.vcf.gz.csi"
+    if not public_vcf_idx.is_file():
+        idx_vcf = f"bcftools index -c {public_vcf_file}"
+        delegator.run(idx_vcf)
+
+
+if __name__ == "__main__":
+    typer.run(main)
