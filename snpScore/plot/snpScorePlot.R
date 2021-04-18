@@ -1,17 +1,17 @@
 suppressMessages(library(data.table))
 suppressMessages(library(stringr))
-suppressMessages(library(omsCMplot))
 suppressMessages(library(ggplot2))
-suppressMessages(library(data.table))
 suppressMessages(library(reshape2))
 suppressMessages(library(dplyr))
 suppressMessages(library(scales))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(argparser))
-suppressMessages(library(gridExtra))
-
 
 options(stringsAsFactors = F)
+
+cmplot_r_script <- file.path(dirname(sys.script()), 'omsCMplot.R')
+source(cmplot_r_script)
+
 
 p <- arg_parser("snp score plot")
 p <- add_argument(
@@ -50,54 +50,6 @@ chr.size <- argv$chr_size
 is_web <- argv$web
 
 wheat_cols <- c("#377EB8", "#4DAF4A", "#FF7F00")
-
-snp_index_plot <- function(each_chr) {
-  
-  chrom_df_1 <- filter(m_snp_index_df, Chrom == each_chr & variable == 'mutant')
-  p1 <- ggplot(chrom_df_1, aes(start_m, value, color=variable)) +
-    geom_point(alpha=0.5) + geom_smooth(color=line_col,method = "loess",alpha = 0.5,span = 0.2) +
-    theme_onmath() +
-    scale_x_continuous(limits = c(0, chrom_len_max),
-                       breaks = seq(0,chrom_len_max,chrom_len_unit)) +
-    scale_color_manual(values = point_cols) +
-    guides(color=F) + xlab("") + ylab("") + ggtitle('mutant')
-  
-  chrom_df_2 <- filter(m_snp_index_df, Chrom == each_chr & variable == 'wild')
-  p2 <- ggplot(chrom_df_2, aes(start_m, value, color=variable)) +
-    geom_point(alpha=0.5,colour=point_cols[2]) + geom_smooth(color=line_col,method = "loess",alpha = 0.5,span = 0.2) +
-    theme_onmath() +
-    scale_x_continuous(limits = c(0, chrom_len_max),
-                       breaks = seq(0,chrom_len_max,chrom_len_unit)) +
-    scale_color_manual(values = point_cols) +
-    guides(color=F) + xlab("") + ylab("") + ggtitle('wild')
-  
-  chrom_df_3 <- filter(m_snp_index_df, Chrom == each_chr & variable == 'snp_score')
-  p3 <- ggplot(chrom_df_3, aes(start_m, value, color=variable)) +
-    geom_point(alpha=0.5,colour=point_cols[3]) + geom_smooth(color=line_col,method = "loess",alpha = 0.5,span = 0.2) +
-    theme_onmath() +
-    scale_x_continuous(limits = c(0, chrom_len_max),
-                       breaks = seq(0,chrom_len_max,chrom_len_unit)) +
-    scale_y_continuous(limits = c(-1, 1),
-                       breaks = seq(-1,1,0.5)) +
-    scale_color_manual(values = point_cols) +
-    guides(color=F) + xlab(paste(each_chr,"(MB)")) + ylab("") + ggtitle('Diff')
-  
-  p <- grid.arrange(p1, p2, p3, nrow = 3,ncol = 1)
-  
-  plot_name <- file.path(output_prefix, each_chr)
-  ggsave(filename = paste(plot_name, 'png', sep = '.'),
-         plot=p,
-         width = 8,
-         height = 6)
-  if (! is_web ) {
-  ggsave(filename = paste(plot_name, 'pdf', sep = '.'),
-         plot=p,
-         width = 12,
-         height = 10)
-
-  }
-}
-
 
 ed_plot <- function(plot.df, breaks, cutoff, labelpos) {
         par(mfrow=c(2,1))
@@ -242,21 +194,6 @@ if (plot_type == 'density') {
             plot.title=plot_title, chr.size=chr.size) 
   }
 
-} else if (plot_type == 'snp_index_old') {
-  
-  if ( ! dir.exists(output_prefix)) {
-    dir.create(output_prefix)
-  }
-  m_snp_index_df <- melt(var_table_df, id.vars = c('Chrom', 'Start', 'End'))
-  m_snp_index_df$start_m <- m_snp_index_df$Start / 1000000
-  chroms <- unique(m_snp_index_df$Chrom)
-  set1_cols <- brewer.pal(9, 'Set1')
-  point_cols <- c(set1_cols[5], set1_cols[2], set1_cols[3])
-  line_col <- set1_cols[1]
-  
-  chrom_len_unit <- 10 ^ floor(log10(max(m_snp_index_df$start_m)))
-  chrom_len_max <- ceiling(max(m_snp_index_df$start_m) / chrom_len_unit) * chrom_len_unit
-  lapply(chroms, snp_index_plot)
 } else if (plot_type == 'Gprime'){
     qtlseqr_plot('Gprime', "G' value", 'Gprime.plot')
 } else if (plot_type == 'snpIndex'){

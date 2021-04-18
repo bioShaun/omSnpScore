@@ -1,0 +1,4 @@
+include snpScore/config/*
+include snpScore/data/*
+include snpScore/doc/*
+include snpScore/plot/*

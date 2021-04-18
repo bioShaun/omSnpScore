@@ -3,9 +3,7 @@
 # from functools import cached_property
 import os
 import attr
-import time
 
-import delegator
 import numpy as np
 import pandas as pd
 from loguru import logger
@@ -14,19 +12,12 @@ from datetime import datetime
 from collections import OrderedDict
 from ._var import REF_FREQ, QTLSEQR_PLOT, QTLSEQR_PLOT_WEB, VAR_TO_VCF_COLUMN_MAP
 from ._var import SnpGroup, MUT_NAME, WILD_NAME, SnpGroupFreq
-from ._utils import (
-    freq_accordance,
-    table2vcf,
-    extract_snpeff_annotation,
-    table2annotation_df,
-)
+from ._utils import table2annotation_df
 from ._utils import alt_ref_cut
 from ._utils import filter_snp
 from ._utils import make_snp_number_windows
 from ._utils import snp_freq_by_window
 from ._utils import cal_score, score_plot
-from ._utils import extract_snpeff_anno
-from ._utils import split_dataframe_rows
 from ._utils import valid_grp
 from ._utils import non_score_filter_snp
 from ._utils import has_parent
@@ -225,9 +216,6 @@ class snpScoreBox:
     def score_ann_df(self):
         # add snp annotation to snp score table and flat
         logger.info("Annotating snp score...")
-        # ann_score_df = self.score_df.sort_values(['snp_score'],
-        #                                          ascending=False)
-        # ann_score_df = ann_score_df[:100]
         self.score_df = self.score_df.reset_index()
         self.score_df.loc[:, "Chrom"] = self.score_df["Chrom"].astype("str")
         self._score_ann_df = self.score_df.merge(
@@ -276,7 +264,6 @@ class snpScoreBox:
                 if self.save_mem:
                     self._snp_window_ann_df = None
         self.grp_alt_freq_file = self.outdir / "snp.freq.csv"
-        # self.plot_cmds.append(score_plot(self.grp_alt_freq_file, 'density'))
         self.plot_cmds.append(
             score_plot(
                 self.alt_filter_freq_file, "density", self.group_label, self.chr_size

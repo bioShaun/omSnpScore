@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+import sys
+import fire
+import vcfpy
+import pandas as pd
+from typing import Optional
+
+def vcfValidator(vcf: str, chr_size:str) -> Optional[str]:
+    try:
+        reader = vcfpy.Reader.from_path(vcf)
+    except FileNotFoundError as e:
+        return 'Upload Failed.'
+    except vcfpy.VCFPyException as e:
+        return f'VCF format Error: [{e}]'
+    except Exception as e:
+        return str(e)
+    else:
+        if 'AD' not in reader.header._indices['FORMAT']:
+            print("ad wrong")
+            return 'Allelic depths information is missing from vcf.'
+
+        chr_size_df = pd.read_csv(chr_size,
+                                  sep='\t',
+                                  header=None,
+                                  usecols=[0, 1],
+                                  index_col=0)
+        chr_size_df.columns = ['chrom_len']
+        contig_info = reader.header.get_lines(key='contig')
+        if contig_info:
+            for chr_i in contig_info:
+                if chr_i.id not in chr_size_df.index:
+                    return f'Invalid chromosome [{chr_i.id}].'
+                else:
+                    iwgsc_chr_len = chr_size_df.loc[chr_i.id].chrom_len
+                    if int(chr_i.length) != iwgsc_chr_len:
+                        error_msg = (
+                            f'Wrong chromosome length for {chr_i.id}'
+                            f'[vcf: {chr_i.length}; IWGSC(v1.0): {iwgsc_chr_len}].'
+                        )
+                        return error_msg
+        else:
+            return 'Chromosome information is missing from vcf file.'
+
+def check_vcf(vcf: str, chr_size: str)-> None:
+    vcf_error_info = vcfValidator(vcf, chr_size)
+    if vcf_error_info:
+        sys.exit(f'invalid vcf file: {vcf_error_info}')
+
+
+if __name__ == "__main__":
+    fire.Fire(check_vcf)

@@ -2,19 +2,26 @@
 
 from setuptools import setup, find_packages
 
-version = "1.0dev"
+version = "1.0.1"
 
 msg = """------------------------------
-Installing omSnpScore version {}
+Installing varBscore version {}
 ------------------------------
 """.format(
     version
 )
 print(msg)
 
+with open("README.md", "r") as f:
+    long_description = f.read()
+
 setup(
-    name="omSnpScore",
+    name="varBscore",
     version=version,
+    description="A python package to calculate varBscore using vcf input",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/bioShaun/omSnpScore",
     author="lx Gui",
     author_email="guilixuan@gmail.com",
     keywords=["bioinformatics", "NGS", "Reseq", "SNP"],
@@ -32,6 +39,7 @@ setup(
         "scripts/snpFilter-cli",
         "scripts/snpFilter-bychr",
         "scripts/snpFilter-mp",
+        "scripts/vcfValidator",
     ],
     install_requires=[
         "fire",
@@ -41,14 +49,15 @@ setup(
         "delegator.py",
         "pybedtools",
         "numpy",
-        "tables",
         "attrs",
         "jinja2",
+        "typer",
+        "vcfpy",
     ],
 )
 
 msg = """------------------------------
-omSnpScore installation complete!
+varBscore installation complete!
 ------------------------------
 """
 print(msg)

@@ -1,8 +1,6 @@
 suppressMessages(library(QTLseqr))
 suppressMessages(library(argparser))
 suppressMessages(library(stringr))
-suppressMessages(library(RColorBrewer))
-suppressMessages(library(stringr))
 suppressMessages(library(fANCOVA))
 
 options(stringsAsFactors = F)
