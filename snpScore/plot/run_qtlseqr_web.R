@@ -71,9 +71,6 @@ qtlseqr_flag <- argv$qtlseqr
 ed_flag <- argv$ed
 ed_plot_flag <- argv$ed_plot
 
-plot_cols <- brewer.pal(9, 'Set1')
-wheat_cols <- c(plot_cols[2], plot_cols[3], plot_cols[5])
-
 
 df <- importFromTable(file=input_table, highBulk = high_bulk, lowBulk = low_bulk)
 df_filt <- filterSNPs(SNPset=df, refAlleleFreq = ref_freq, minSampleDepth = min_sample_dp)

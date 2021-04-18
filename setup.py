@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-version = "1.0.1"
+version = "1.0.3"
 
 msg = """------------------------------
 Installing varBscore version {}

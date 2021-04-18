@@ -6,6 +6,8 @@ suppressMessages(library(dplyr))
 suppressMessages(library(scales))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(argparser))
+suppressMessages(library(funr))
+
 
 options(stringsAsFactors = F)
 
