@@ -388,7 +388,7 @@ def split_dataframe_rows(df, column_selectors, row_delimiter):
                 split_row = row[column_selector].split(row_delimiter)
             except Exception:
                 print(row)
-                sys.exit(1)
+                sys.exit('split datafrom row error')
             split_rows[column_selector] = split_row
             if len(split_row) > max_split:
                 max_split = len(split_row)
@@ -739,13 +739,15 @@ def extract_qtlseqr_result(df: pd.DataFrame, selected_cols: List[str],
 
 
 def flat_snpeff_ann(df: pd.DataFrame, out_cols: List[str]) -> pd.DataFrame:
-    snpeff_anno = list(df.INFO.map(extract_snpeff_anno))
+    rmna_df = df.dropna()
+    snpeff_anno = list(rmna_df.INFO.map(extract_snpeff_anno))
     snpeff_anno_df = pd.DataFrame(snpeff_anno)
     snpeff_anno_df.columns = [
         'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
         'Variant_Protein_Level'
     ]
-    ann_df = pd.concat([df, snpeff_anno_df], axis=1)
+    ann_df = pd.concat([rmna_df, snpeff_anno_df], axis=1)
+    ann_df.dropna(inplace=True)
     ann_df.drop('INFO', axis=1, inplace=True)
     ann_df = split_dataframe_rows(ann_df,
                                   column_selectors=[

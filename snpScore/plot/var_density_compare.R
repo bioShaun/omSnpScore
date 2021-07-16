@@ -8,11 +8,17 @@ options(stringsAsFactors = F)
 p <- arg_parser("for var compare heatmap")
 p <- add_argument(p, "--var_density_file", help = "var density by window")
 p <- add_argument(p, "--out_prefix", help = "output plot prefix")
+p <- add_argument(p, "--width", help = "plot width", default=0)
+p <- add_argument(p, "--height", help = "plot height", default=0)
+p <- add_argument(p, "--xAxis_font_size", help = "xAxis font size", default=0.75)
 argv <- parse_args(p)
 
 
 var_density_file <- argv$var_density_file
 out_prefix <- argv$out_prefix
+input_width <- argv$width
+input_height <- argv$height
+xAxis_font_size <- argv$xAxis_font_size
 
 # var_density_file <- './TCE000007.K1-1_TCE000008.R1-1-depth_1-window_1.0M.csv'
 # out_prefix <- 'test-plot'
@@ -48,7 +54,7 @@ p <- ggplot(m_var_density_df) +
         axis.text.y = element_blank(),
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white"),
-        axis.text.x = element_text(angle = 90, hjust =0, size=rel(0.75))) +
+        axis.text.x = element_text(angle = 270, hjust =0, size=rel(xAxis_font_size))) +
   scale_fill_gradientn(colours = cor_plot_col) +
   guides(fill=guide_colourbar(title='Log2(SNP) per 1Mb')) +
   xlab('') + ylab('') +
@@ -61,10 +67,21 @@ if (sample_num == 1) {
 
 chrom_list <- as.character(unique(m_var_density_df$chrom))
 chrom_num <- length(chrom_list)
+
 sample_num_scale = ifelse(sample_num < 2, 2, sample_num)
-p_width = 2 * chrom_num * sample_num_scale / 7
-ggsave(paste(out_prefix, 'png', sep='.'), 
-       plot = p, width = p_width, height = 12,
+
+if (input_width && input_height) {
+    p_width = input_width
+    p_height = input_height
+} else {
+    p_width = 2 * chrom_num * sample_num_scale / 7
+    p_height = 12
+}
+
+if (p_width <= 50 && p_height <= 50) {
+   ggsave(paste(out_prefix, 'png', sep='.'),                  
+       plot = p, width = p_width, height = p_height,
        dpi = 300, type = "cairo")
-ggsave(paste(out_prefix, 'pdf', sep='.'), 
-       plot = p, width = p_width, height = 12)
+}
+ggsave(paste(out_prefix, 'pdf', sep='.'), limitsize = FALSE,
+       plot = p, width = p_width, height = p_height)
