@@ -739,15 +739,18 @@ def extract_qtlseqr_result(df: pd.DataFrame, selected_cols: List[str],
 
 
 def flat_snpeff_ann(df: pd.DataFrame, out_cols: List[str]) -> pd.DataFrame:
-    rmna_df = df.dropna()
+    rmna_df = df.dropna(subset=['INFO'])
+    rmna_df.reset_index(drop=True, inplace=True)
     snpeff_anno = list(rmna_df.INFO.map(extract_snpeff_anno))
     snpeff_anno_df = pd.DataFrame(snpeff_anno)
-    snpeff_anno_df.columns = [
+    snpeff_anno_cols = [
         'Feature', 'Gene', 'Transcript', 'Variant_DNA_Level',
         'Variant_Protein_Level'
-    ]
+    ]    
+    snpeff_anno_df.columns = snpeff_anno_cols
     ann_df = pd.concat([rmna_df, snpeff_anno_df], axis=1)
-    ann_df.dropna(inplace=True)
+    ann_df.dropna(inplace=True, subset=snpeff_anno_cols)
+    ann_df.reset_index(drop=True, inplace=True)
     ann_df.drop('INFO', axis=1, inplace=True)
     ann_df = split_dataframe_rows(ann_df,
                                   column_selectors=[
@@ -771,6 +774,7 @@ def top_ranked_results(df: pd.DataFrame,
         top_cutoff = np.quantile(sorted(df[rank_col].unique()),
                                  1 - select_rate)
         df = df[df[rank_col] >= top_cutoff]
+        # df.to_csv('filter.rank.txt', sep='\t')
         df.reset_index(drop=True, inplace=True)
         out_df = flat_snpeff_ann(df, out_cols)
         out_df = sientific_number_col_to_str(out_df)
